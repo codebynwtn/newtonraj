@@ -26,21 +26,137 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
     
-    // Admin credentials
     const ADMIN_EMAIL = "admin@newtonraj.com";
     const ADMIN_PASSWORD = "Newton@2026Admin";
     
-    // Auto-create admin user if not exists
-    async function ensureAdminUser() {
+    // ========== CREATE ALL COLLECTIONS AND SEED DATA ==========
+    async function createAllCollectionsAndSeed() {
+      console.log("Creating database collections...");
+      
+      const seedData = {
+        profile: {
+          name: "Newton Raj",
+          title: "Senior Software Engineer & AI Architect",
+          bio: "I am a Senior Software Engineer & AI Architect with 5+ years architecting scalable cloud systems, LLM-driven products, and high-performance full-stack solutions.",
+          avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuCzS06WmOI4QZUDvmOqn06ylPgGTqNtb6PXRNVRXEvx8ql4De-J3-BbivK-xm3qiNlvXDCVFtr8d2NuJ0HJQlBmCo6okGTszzofbNh-vXq7f3t6Y9R0NK8xNJlJjWi1mxU_HyiVyLn-O87ajD6pVCDkyT3gRJtIeXUL8xTfj7PM7mmIR7Loj6ia8ZNg0zDl5aLyImPOfuLhABqZAlTvlVqHc1eep_f9QpmRNNmao68LH7L5q0szmeRhuHW3i9gACjEjGYAyntiaag",
+          updatedAt: new Date().toISOString()
+        },
+        site: {
+          siteTitle: "Newton Raj | Software Engineering | Hyper-Lucid AI Architect",
+          tagline: "Driving Innovation through AI & Software Engineering",
+          footerText: "© 2026 Newton Raj",
+          updatedAt: new Date().toISOString()
+        },
+        meta: {
+          description: "Newton Raj - Senior Software Engineer & AI Architect portfolio",
+          keywords: "AI, Software Engineer, Cloud Architect, Full Stack, LLM",
+          updatedAt: new Date().toISOString()
+        },
+        competencies: [
+          { name: "AI Integration & LLMs", percentage: 94, order: 1 },
+          { name: "Backend Systems (Go/Rust)", percentage: 98, order: 2 },
+          { name: "Full-stack Excellence", percentage: 92, order: 3 },
+          { name: "Infrastructure as Code", percentage: 89, order: 4 }
+        ],
+        experience: [
+          { company: "Ignite Learning & Consultancy Pvt. Ltd", role: "Senior Software Engineer Team Lead", period: "May 2025 - Present", responsibilities: ["Lead cross-functional team", "Drive architecture decisions", "AI/LLM integrations"], skills: ["Python", "React.js", "Node.js", "AWS"], order: 1 },
+          { company: "Ignite Learning & Consultancy Pvt. Ltd", role: "Senior Lead Software Engineer", period: "Apr 2024 - May 2025", responsibilities: ["High-level architecture", "Cloud services management", "AI product innovation"], skills: ["Python", "AWS", "Azure"], order: 2 },
+          { company: "Ignite Learning & Consultancy Pvt. Ltd", role: "Software Engineer", period: "Oct 2022 - Mar 2024", responsibilities: ["Technical execution", "DevOps integration", "Full-stack development"], skills: ["React.js", "Node.js", "Python"], order: 3 },
+          { company: "Lkcareers", role: "Senior Software Engineer Project Lead", period: "Apr 2024 - Present", responsibilities: ["Architecture leadership", "Cloud services", "AI innovation"], skills: ["JavaScript", "Laravel", "AWS"], order: 4 },
+          { company: "Lkcareers", role: "Software Engineer", period: "Oct 2022 - Mar 2024", responsibilities: ["Web modules development", "API integrations", "Full-stack ownership"], skills: ["JavaScript", "Laravel", "PHP"], order: 5 }
+        ],
+        projects: [
+          { title: "Receipt OCR GPT Parser", category: "Generative AI", description: "LLM-powered receipt data extraction", excerpt: "OCR + GPT-4 pipeline", imageUrl: "https://picsum.photos/id/0/800/600", link: "#", order: 1, featured: true },
+          { title: "Global Festive Tracker", category: "Data Viz", description: "World celebration calendar", excerpt: "Real-time API integrations", imageUrl: "https://picsum.photos/id/20/400/400", link: "#", order: 2, featured: true },
+          { title: "Moltbook — AI Social Network", category: "AI Innovation", description: "Social network for AI agents", excerpt: "Digital journaling platform", imageUrl: "https://picsum.photos/id/0/800/600", link: "#", order: 3, featured: false }
+        ],
+        articles: [
+          { title: "What Happens When AI Gets Its Own Reddit?", excerpt: "Moltbook story", icon: "forum", tag: "AI REVOLUTION", link: "#", publishedAt: new Date().toISOString() },
+          { title: "How Ghibli-Style AI Art Works", excerpt: "Diffusion models", icon: "palette", tag: "GENERATIVE AI", link: "#", publishedAt: new Date().toISOString() },
+          { title: "Docker — A Game-Changer for Developers", excerpt: "Container orchestration", icon: "terminal", tag: "DEVOPS", link: "#", publishedAt: new Date().toISOString() }
+        ],
+        beyond: [
+          { title: "Badminton", subtitle: "Power & Precision", imageUrl: "https://images.pexels.com/photos/3755701/badminton-player-racquet-shuttlecock-3755701.jpg", order: 1 },
+          { title: "Chess", subtitle: "Strategic Depth", imageUrl: "https://images.pexels.com/photos/4791463/chess-king-board-game-4791463.jpg", order: 2 },
+          { title: "YouTube/Blogger", subtitle: "Digital Storytelling", imageUrl: "https://images.pexels.com/photos/4491451/recording-podcast-studio-microphone-4491451.jpg", order: 3 }
+        ]
+      };
+      
+      const batch = writeBatch(db);
+      
+      // adminSettings
+      batch.set(doc(db, 'adminSettings', 'profile'), seedData.profile);
+      batch.set(doc(db, 'adminSettings', 'site'), seedData.site);
+      batch.set(doc(db, 'adminSettings', 'meta'), seedData.meta);
+      
+      // competencies
+      for (const comp of seedData.competencies) {
+        batch.set(doc(collection(db, 'competencies')), comp);
+      }
+      
+      // experience
+      for (const exp of seedData.experience) {
+        batch.set(doc(collection(db, 'experience')), exp);
+      }
+      
+      // projects
+      for (const proj of seedData.projects) {
+        batch.set(doc(collection(db, 'projects')), proj);
+      }
+      
+      // articles
+      for (const art of seedData.articles) {
+        batch.set(doc(collection(db, 'articles')), art);
+      }
+      
+      // beyond
+      for (const item of seedData.beyond) {
+        batch.set(doc(collection(db, 'beyond')), item);
+      }
+      
+      // contacts (demo)
+      batch.set(doc(collection(db, 'contacts')), {
+        name: "Demo User",
+        email: "demo@example.com",
+        message: "Demo contact entry",
+        timestamp: new Date().toISOString(),
+        read: false
+      });
+      
+      await batch.commit();
+      console.log("All collections created!");
+      return true;
+    }
+    
+    // Check if collections exist and create if needed
+    async function ensureDatabaseExists() {
+      try {
+        const testRef = doc(db, 'adminSettings', 'profile');
+        const testSnap = await getDoc(testRef);
+        if (!testSnap.exists()) {
+          console.log("Database empty, creating collections...");
+          await createAllCollectionsAndSeed();
+          return true;
+        }
+        return false;
+      } catch (error) {
+        console.log("Error checking DB, attempting to create:", error);
+        await createAllCollectionsAndSeed();
+        return true;
+      }
+    }
+    
+    // Create admin user in Firebase Auth
+    async function createAdminUserIfNotExists() {
       try {
         await signInWithEmailAndPassword(auth, ADMIN_EMAIL, ADMIN_PASSWORD);
         console.log("Admin user exists");
         return true;
       } catch (error) {
-        if (error.code === 'auth/user-not-found') {
+        if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
           try {
             await createUserWithEmailAndPassword(auth, ADMIN_EMAIL, ADMIN_PASSWORD);
-            console.log("Admin user created successfully!");
+            console.log("✅ Admin user created!");
             return true;
           } catch (createError) {
             console.error("Error creating admin:", createError.message);
@@ -56,7 +172,7 @@
     
     let currentUser = null;
     
-    // Auth UI elements
+    // UI Elements
     const loginScreen = document.getElementById('login-screen');
     const adminPanel = document.getElementById('admin-panel');
     const loginError = document.getElementById('login-error');
@@ -65,15 +181,29 @@
     const loginBtn = document.getElementById('login-btn');
     const logoutBtn = document.getElementById('logout-btn');
     const adminUserEmail = document.getElementById('admin-user-email');
+    const statusMessage = document.getElementById('status-message');
     
     // Navigation
     const navItems = document.querySelectorAll('.nav-item');
     const sections = document.querySelectorAll('.admin-section');
     
     let currentEditId = null;
-    let currentEditCollection = null;
     
-    // Initialize admin
+    // Initialize - setup database and admin user on page load
+    (async function init() {
+      statusMessage.classList.remove('hidden');
+      statusMessage.innerHTML = '<span class="material-symbols-outlined text-sm mr-2">hourglass_empty</span> Setting up database...';
+      
+      await ensureDatabaseExists();
+      await createAdminUserIfNotExists();
+      
+      statusMessage.innerHTML = '<span class="material-symbols-outlined text-sm mr-2">check_circle</span> Database ready! You can now login.';
+      setTimeout(() => {
+        statusMessage.classList.add('hidden');
+      }, 3000);
+    })();
+    
+    // Auth state listener
     onAuthStateChanged(auth, async (user) => {
       if (user) {
         currentUser = user;
@@ -81,12 +211,9 @@
         adminPanel.classList.remove('hidden');
         adminUserEmail.textContent = user.email;
         await loadAllSections();
-        await ensureAdminUser(); // Ensure admin exists
       } else {
         loginScreen.classList.remove('hidden');
         adminPanel.classList.add('hidden');
-        // Try to auto-create on login screen load
-        ensureAdminUser();
       }
     });
     
@@ -94,17 +221,31 @@
       const email = loginEmail.value.trim();
       const password = loginPassword.value.trim();
       loginError.classList.add('hidden');
+      
+      statusMessage.classList.remove('hidden');
+      statusMessage.innerHTML = '<span class="material-symbols-outlined text-sm mr-2">progress_activity</span> Logging in...';
+      
       try {
         await signInWithEmailAndPassword(auth, email, password);
+        statusMessage.innerHTML = '<span class="material-symbols-outlined text-sm mr-2">check_circle</span> Login successful!';
+        setTimeout(() => statusMessage.classList.add('hidden'), 2000);
       } catch (error) {
         if (error.code === 'auth/user-not-found') {
-          loginError.textContent = "User not found. Please use: admin@newtonraj.com / Newton@2026Admin";
-        } else if (error.code === 'auth/wrong-password') {
-          loginError.textContent = "Wrong password. Use: Newton@2026Admin";
+          loginError.textContent = "User not found. Creating account... Please try again.";
+          try {
+            await createUserWithEmailAndPassword(auth, email, password);
+            statusMessage.innerHTML = '<span class="material-symbols-outlined text-sm mr-2">check_circle</span> Account created! Logging in...';
+            await signInWithEmailAndPassword(auth, email, password);
+          } catch (createError) {
+            loginError.textContent = "Error: " + createError.message;
+            loginError.classList.remove('hidden');
+            statusMessage.classList.add('hidden');
+          }
         } else {
           loginError.textContent = "Login failed: " + error.message;
+          loginError.classList.remove('hidden');
+          statusMessage.classList.add('hidden');
         }
-        loginError.classList.remove('hidden');
       }
     });
     
@@ -123,7 +264,7 @@
       });
     });
     
-    // ========== LOAD ALL DATA ==========
+    // ========== LOAD FUNCTIONS ==========
     async function loadAllSections() {
       await loadProfileDetails();
       await loadSiteSettings();
@@ -135,107 +276,83 @@
       await loadBeyondSections();
     }
     
-    // ========== PROFILE DETAILS ==========
     async function loadProfileDetails() {
-      const profileRef = doc(db, 'adminSettings', 'profile');
-      const docSnap = await getDoc(profileRef);
+      const docSnap = await getDoc(doc(db, 'adminSettings', 'profile'));
       const data = docSnap.exists() ? docSnap.data() : {};
-      document.getElementById('profile-name').value = data.name || 'Newton Raj';
-      document.getElementById('profile-title').value = data.title || 'Senior Software Engineer & AI Architect';
-      document.getElementById('profile-bio').value = data.bio || 'I am a Senior Software Engineer & AI Architect with 5+ years architecting scalable cloud systems, LLM-driven products, and high-performance full-stack solutions.';
-      document.getElementById('profile-avatar').value = data.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuCzS06WmOI4QZUDvmOqn06ylPgGTqNtb6PXRNVRXEvx8ql4De-J3-BbivK-xm3qiNlvXDCVFtr8d2NuJ0HJQlBmCo6okGTszzofbNh-vXq7f3t6Y9R0NK8xNJlJjWi1mxU_HyiVyLn-O87ajD6pVCDkyT3gRJtIeXUL8xTfj7PM7mmIR7Loj6ia8ZNg0zDl5aLyImPOfuLhABqZAlTvlVqHc1eep_f9QpmRNNmao68LH7L5q0szmeRhuHW3i9gACjEjGYAyntiaag';
+      document.getElementById('profile-name').value = data.name || '';
+      document.getElementById('profile-title').value = data.title || '';
+      document.getElementById('profile-bio').value = data.bio || '';
+      document.getElementById('profile-avatar').value = data.avatar || '';
     }
     
     window.saveProfileDetails = async function() {
-      const data = {
+      await setDoc(doc(db, 'adminSettings', 'profile'), {
         name: document.getElementById('profile-name').value,
         title: document.getElementById('profile-title').value,
         bio: document.getElementById('profile-bio').value,
         avatar: document.getElementById('profile-avatar').value,
         updatedAt: new Date().toISOString()
-      };
-      await setDoc(doc(db, 'adminSettings', 'profile'), data);
-      alert('Profile saved successfully!');
+      });
+      alert('Profile saved!');
     };
     
-    // ========== SITE SETTINGS ==========
     async function loadSiteSettings() {
-      const settingsRef = doc(db, 'adminSettings', 'site');
-      const docSnap = await getDoc(settingsRef);
+      const docSnap = await getDoc(doc(db, 'adminSettings', 'site'));
       const data = docSnap.exists() ? docSnap.data() : {};
-      document.getElementById('site-title').value = data.siteTitle || 'Newton Raj | Software Engineering | Hyper-Lucid AI Architect';
-      document.getElementById('site-tagline').value = data.tagline || 'Driving Innovation through AI & Software Engineering';
-      document.getElementById('footer-text').value = data.footerText || '© 2026 Newton Raj';
+      document.getElementById('site-title').value = data.siteTitle || '';
+      document.getElementById('site-tagline').value = data.tagline || '';
+      document.getElementById('footer-text').value = data.footerText || '';
     }
     
     window.saveSiteSettings = async function() {
-      const data = {
+      await setDoc(doc(db, 'adminSettings', 'site'), {
         siteTitle: document.getElementById('site-title').value,
         tagline: document.getElementById('site-tagline').value,
         footerText: document.getElementById('footer-text').value,
         updatedAt: new Date().toISOString()
-      };
-      await setDoc(doc(db, 'adminSettings', 'site'), data);
+      });
       alert('Site settings saved!');
     };
     
-    // ========== META SETTINGS ==========
     async function loadMetaSettings() {
-      const metaRef = doc(db, 'adminSettings', 'meta');
-      const docSnap = await getDoc(metaRef);
+      const docSnap = await getDoc(doc(db, 'adminSettings', 'meta'));
       const data = docSnap.exists() ? docSnap.data() : {};
-      document.getElementById('meta-description').value = data.description || 'Newton Raj - Senior Software Engineer & AI Architect portfolio';
-      document.getElementById('meta-keywords').value = data.keywords || 'AI, Software Engineer, Cloud Architect, Full Stack, LLM';
+      document.getElementById('meta-description').value = data.description || '';
+      document.getElementById('meta-keywords').value = data.keywords || '';
     }
     
     window.saveMetaSettings = async function() {
-      const data = {
+      await setDoc(doc(db, 'adminSettings', 'meta'), {
         description: document.getElementById('meta-description').value,
         keywords: document.getElementById('meta-keywords').value,
         updatedAt: new Date().toISOString()
-      };
-      await setDoc(doc(db, 'adminSettings', 'meta'), data);
+      });
       alert('Meta settings saved!');
     };
     
-    // ========== CORE COMPETENCIES ==========
     async function loadCoreCompetencies() {
-      const compCol = collection(db, 'competencies');
-      const q = query(compCol, orderBy('order', 'asc'));
-      const snapshot = await getDocs(q);
+      const snapshot = await getDocs(query(collection(db, 'competencies'), orderBy('order', 'asc')));
       const container = document.getElementById('competencies-list');
       container.innerHTML = '';
-      if (snapshot.empty) {
-        container.innerHTML = '<div class="text-outline text-center py-4">No competencies yet. Click "Add Competency" to create.</div>';
-      }
       snapshot.forEach(doc => {
         const data = doc.data();
-        container.innerHTML += `
-          <div class="glass-card rounded-xl p-4 flex justify-between items-center">
-            <div><span class="font-bold text-primary">${escapeHtml(data.name)}</span><span class="text-sm text-outline ml-3">${data.percentage}%</span></div>
-            <div class="flex gap-2">
-              <button onclick="editCompetency('${doc.id}', '${escapeHtml(data.name)}', ${data.percentage})" class="text-primary text-sm">✏️ Edit</button>
-              <button onclick="deleteCompetency('${doc.id}')" class="text-red-400 text-sm">🗑️ Delete</button>
-            </div>
-          </div>
-        `;
+        container.innerHTML += `<div class="glass-card rounded-xl p-4 flex justify-between items-center"><div><span class="font-bold text-primary">${escapeHtml(data.name)}</span><span class="text-sm text-outline ml-3">${data.percentage}%</span></div><div class="flex gap-2"><button onclick="editCompetency('${doc.id}', '${escapeHtml(data.name)}', ${data.percentage})" class="text-primary text-sm">✏️ Edit</button><button onclick="deleteCompetency('${doc.id}')" class="text-red-400 text-sm">🗑️ Delete</button></div></div>`;
       });
     }
     
     window.addCompetency = async function() {
-      const name = prompt('Enter competency name (e.g., "AI Integration & LLMs"):');
-      const percentage = parseInt(prompt('Enter percentage (0-100):'));
+      const name = prompt('Competency name:');
+      const percentage = parseInt(prompt('Percentage:'));
       if (name && percentage) {
-        const compCol = collection(db, 'competencies');
-        const snapshot = await getDocs(query(compCol, orderBy('order', 'desc')));
+        const snapshot = await getDocs(query(collection(db, 'competencies'), orderBy('order', 'desc')));
         const lastOrder = snapshot.empty ? 0 : (snapshot.docs[0].data().order || 0);
-        await addDoc(compCol, { name, percentage, order: lastOrder + 1 });
+        await addDoc(collection(db, 'competencies'), { name, percentage, order: lastOrder + 1 });
         await loadCoreCompetencies();
       }
     };
     
     window.editCompetency = async function(id, name, percentage) {
-      const newName = prompt('Edit competency name:', name);
+      const newName = prompt('Edit name:', name);
       const newPercentage = parseInt(prompt('Edit percentage:', percentage));
       if (newName && newPercentage) {
         await updateDoc(doc(db, 'competencies', id), { name: newName, percentage: newPercentage });
@@ -244,249 +361,136 @@
     };
     
     window.deleteCompetency = async function(id) {
-      if (confirm('Delete this competency?')) {
-        await deleteDoc(doc(db, 'competencies', id));
-        await loadCoreCompetencies();
-      }
+      if (confirm('Delete?')) await deleteDoc(doc(db, 'competencies', id));
+      await loadCoreCompetencies();
     };
     
-    // ========== EXPERIENCE ==========
     async function loadExperience() {
-      const expCol = collection(db, 'experience');
-      const snapshot = await getDocs(expCol);
+      const snapshot = await getDocs(collection(db, 'experience'));
       const container = document.getElementById('experience-list');
       container.innerHTML = '';
-      if (snapshot.empty) {
-        container.innerHTML = '<div class="text-outline text-center py-4">No experience entries. Click "Add Experience" to create.</div>';
-      }
       snapshot.forEach(doc => {
         const data = doc.data();
-        container.innerHTML += `
-          <div class="glass-card rounded-xl p-4">
-            <div class="flex justify-between items-start">
-              <div><h3 class="font-bold text-primary">${escapeHtml(data.company)}</h3><p class="text-sm text-outline">${escapeHtml(data.role)}</p><p class="text-xs text-outline/60">${escapeHtml(data.period)}</p></div>
-              <div class="flex gap-2"><button onclick="editExperience('${doc.id}')" class="text-primary text-sm">✏️ Edit</button><button onclick="deleteExperience('${doc.id}')" class="text-red-400 text-sm">🗑️ Delete</button></div>
-            </div>
-            <ul class="mt-2 text-xs text-outline list-disc list-inside">${(data.responsibilities || []).map(r => `<li>${escapeHtml(r)}</li>`).join('') || ''}</ul>
-            <div class="flex flex-wrap gap-1 mt-2">${(data.skills || []).map(s => `<span class="text-[9px] bg-primary/20 px-2 py-0.5 rounded">${escapeHtml(s)}</span>`).join('') || ''}</div>
-          </div>
-        `;
+        container.innerHTML += `<div class="glass-card rounded-xl p-4"><div class="flex justify-between"><div><h3 class="font-bold text-primary">${escapeHtml(data.company)}</h3><p class="text-sm text-outline">${escapeHtml(data.role)}</p><p class="text-xs text-outline/60">${escapeHtml(data.period)}</p></div><div class="flex gap-2"><button onclick="editExperiencePrompt('${doc.id}', '${escapeHtml(data.company)}', '${escapeHtml(data.role)}', '${escapeHtml(data.period)}')" class="text-primary text-sm">✏️ Edit</button><button onclick="deleteExperience('${doc.id}')" class="text-red-400 text-sm">🗑️ Delete</button></div></div></div>`;
       });
     }
     
-    window.addExperience = function() {
-      currentEditCollection = 'experience';
-      currentEditId = null;
-      document.getElementById('exp-modal').classList.remove('hidden');
-      document.getElementById('exp-company').value = '';
-      document.getElementById('exp-role').value = '';
-      document.getElementById('exp-period').value = '';
-      document.getElementById('exp-responsibilities').value = '';
-      document.getElementById('exp-skills').value = '';
-      document.getElementById('exp-modal-title').textContent = 'Add Experience';
-    };
-    
-    window.editExperience = async function(id) {
-      const docSnap = await getDoc(doc(db, 'experience', id));
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        currentEditId = id;
-        currentEditCollection = 'experience';
-        document.getElementById('exp-company').value = data.company || '';
-        document.getElementById('exp-role').value = data.role || '';
-        document.getElementById('exp-period').value = data.period || '';
-        document.getElementById('exp-responsibilities').value = (data.responsibilities || []).join('\n');
-        document.getElementById('exp-skills').value = (data.skills || []).join(', ');
-        document.getElementById('exp-modal-title').textContent = 'Edit Experience';
-        document.getElementById('exp-modal').classList.remove('hidden');
-      }
-    };
-    
-    window.saveExperience = async function() {
-      const data = {
-        company: document.getElementById('exp-company').value,
-        role: document.getElementById('exp-role').value,
-        period: document.getElementById('exp-period').value,
-        responsibilities: document.getElementById('exp-responsibilities').value.split('\n').filter(l => l.trim()),
-        skills: document.getElementById('exp-skills').value.split(',').map(s => s.trim()),
-        updatedAt: new Date().toISOString()
-      };
-      if (currentEditId) {
-        await updateDoc(doc(db, 'experience', currentEditId), data);
-      } else {
-        const snapshot = await getDocs(query(collection(db, 'experience'), orderBy('order', 'desc')));
-        const lastOrder = snapshot.empty ? 0 : (snapshot.docs[0].data().order || 0);
-        await addDoc(collection(db, 'experience'), { ...data, order: lastOrder + 1 });
-      }
-      document.getElementById('exp-modal').classList.add('hidden');
-      await loadExperience();
-    };
-    
-    window.deleteExperience = async function(id) {
-      if (confirm('Delete this experience?')) {
-        await deleteDoc(doc(db, 'experience', id));
+    window.addExperience = async function() {
+      const company = prompt('Company:');
+      const role = prompt('Role:');
+      const period = prompt('Period:');
+      if (company && role) {
+        await addDoc(collection(db, 'experience'), { company, role, period, responsibilities: [], skills: [], order: Date.now() });
         await loadExperience();
       }
     };
     
-    window.closeModal = function() {
-      document.getElementById('exp-modal').classList.add('hidden');
+    window.editExperiencePrompt = async function(id, company, role, period) {
+      const newCompany = prompt('Company:', company);
+      const newRole = prompt('Role:', role);
+      const newPeriod = prompt('Period:', period);
+      if (newCompany) {
+        await updateDoc(doc(db, 'experience', id), { company: newCompany, role: newRole, period: newPeriod });
+        await loadExperience();
+      }
     };
     
-    // ========== PROJECTS ==========
+    window.deleteExperience = async function(id) {
+      if (confirm('Delete?')) await deleteDoc(doc(db, 'experience', id));
+      await loadExperience();
+    };
+    
     async function loadProjects() {
-      const projCol = collection(db, 'projects');
-      const q = query(projCol, orderBy('order', 'asc'));
-      const snapshot = await getDocs(q);
+      const snapshot = await getDocs(query(collection(db, 'projects'), orderBy('order', 'asc')));
       const container = document.getElementById('projects-list');
       container.innerHTML = '';
-      if (snapshot.empty) {
-        container.innerHTML = '<div class="text-outline text-center py-4">No projects yet. Click "Add Project" to create.</div>';
-      }
       snapshot.forEach(doc => {
         const data = doc.data();
-        container.innerHTML += `
-          <div class="glass-card rounded-xl p-4">
-            <div class="flex justify-between"><h3 class="font-bold text-primary">${escapeHtml(data.title)}</h3><div class="flex gap-2"><button onclick="editProjectPrompt('${doc.id}', '${escapeHtml(data.title)}', '${escapeHtml(data.category)}', '${escapeHtml(data.description)}')" class="text-primary">✏️</button><button onclick="deleteProject('${doc.id}')" class="text-red-400">🗑️</button></div></div>
-            <p class="text-xs text-outline mt-1">${escapeHtml(data.category)}</p>
-            <p class="text-sm mt-2">${escapeHtml(data.description?.substring(0, 100))}...</p>
-          </div>
-        `;
+        container.innerHTML += `<div class="glass-card rounded-xl p-4 flex justify-between items-center"><div><span class="font-bold text-primary">${escapeHtml(data.title)}</span><p class="text-xs text-outline">${escapeHtml(data.category)}</p></div><div class="flex gap-2"><button onclick="editProjectPrompt('${doc.id}', '${escapeHtml(data.title)}', '${escapeHtml(data.category)}')" class="text-primary text-sm">✏️ Edit</button><button onclick="deleteProject('${doc.id}')" class="text-red-400 text-sm">🗑️ Delete</button></div></div>`;
       });
     }
     
     window.addProject = async function() {
       const title = prompt('Project title:');
       if (title) {
-        const projCol = collection(db, 'projects');
-        const snapshot = await getDocs(query(projCol, orderBy('order', 'desc')));
+        const snapshot = await getDocs(query(collection(db, 'projects'), orderBy('order', 'desc')));
         const lastOrder = snapshot.empty ? 0 : (snapshot.docs[0].data().order || 0);
-        await addDoc(projCol, {
-          title,
-          category: 'New Project',
-          description: 'Description here',
-          excerpt: 'Short excerpt',
-          imageUrl: 'https://picsum.photos/id/0/800/600',
-          link: '#',
-          order: lastOrder + 1
-        });
+        await addDoc(collection(db, 'projects'), { title, category: 'New', order: lastOrder + 1 });
         await loadProjects();
       }
     };
     
-    window.editProjectPrompt = async function(id, title, category, description) {
-      const newTitle = prompt('Edit title:', title);
-      const newCategory = prompt('Edit category:', category);
-      const newDesc = prompt('Edit description:', description);
+    window.editProjectPrompt = async function(id, title, category) {
+      const newTitle = prompt('Title:', title);
+      const newCategory = prompt('Category:', category);
       if (newTitle) {
-        await updateDoc(doc(db, 'projects', id), { title: newTitle, category: newCategory, description: newDesc });
+        await updateDoc(doc(db, 'projects', id), { title: newTitle, category: newCategory });
         await loadProjects();
       }
     };
     
     window.deleteProject = async function(id) {
-      if (confirm('Delete project?')) await deleteDoc(doc(db, 'projects', id));
+      if (confirm('Delete?')) await deleteDoc(doc(db, 'projects', id));
       await loadProjects();
     };
     
-    // ========== ARTICLES ==========
     async function loadArticles() {
-      const artCol = collection(db, 'articles');
-      const q = query(artCol, orderBy('publishedAt', 'desc'));
-      const snapshot = await getDocs(q);
+      const snapshot = await getDocs(query(collection(db, 'articles'), orderBy('publishedAt', 'desc')));
       const container = document.getElementById('articles-list');
       container.innerHTML = '';
-      if (snapshot.empty) {
-        container.innerHTML = '<div class="text-outline text-center py-4">No articles yet. Click "Add Article" to create.</div>';
-      }
       snapshot.forEach(doc => {
         const data = doc.data();
-        container.innerHTML += `
-          <div class="glass-card rounded-xl p-4">
-            <div class="flex justify-between"><h3 class="font-bold text-secondary">${escapeHtml(data.title)}</h3><div class="flex gap-2"><button onclick="editArticlePrompt('${doc.id}', '${escapeHtml(data.title)}', '${escapeHtml(data.excerpt)}', '${escapeHtml(data.link)}')" class="text-primary">✏️</button><button onclick="deleteArticle('${doc.id}')" class="text-red-400">🗑️</button></div></div>
-            <p class="text-xs text-outline mt-1">${escapeHtml(data.tag || 'Article')}</p>
-          </div>
-        `;
+        container.innerHTML += `<div class="glass-card rounded-xl p-4 flex justify-between items-center"><div><span class="font-bold text-secondary">${escapeHtml(data.title)}</span><p class="text-xs text-outline">${escapeHtml(data.tag || 'Article')}</p></div><div class="flex gap-2"><button onclick="editArticlePrompt('${doc.id}', '${escapeHtml(data.title)}')" class="text-primary text-sm">✏️ Edit</button><button onclick="deleteArticle('${doc.id}')" class="text-red-400 text-sm">🗑️ Delete</button></div></div>`;
       });
     }
     
     window.addArticle = async function() {
       const title = prompt('Article title:');
       if (title) {
-        await addDoc(collection(db, 'articles'), {
-          title,
-          excerpt: 'Article excerpt',
-          icon: 'article',
-          tag: 'INSIGHT',
-          link: '#',
-          publishedAt: new Date().toISOString()
-        });
+        await addDoc(collection(db, 'articles'), { title, excerpt: '', icon: 'article', tag: 'NEW', link: '#', publishedAt: new Date().toISOString() });
         await loadArticles();
       }
     };
     
-    window.editArticlePrompt = async function(id, title, excerpt, link) {
-      const newTitle = prompt('Edit title:', title);
-      const newExcerpt = prompt('Edit excerpt:', excerpt);
-      const newLink = prompt('Edit link URL:', link);
-      if (newTitle) {
-        await updateDoc(doc(db, 'articles', id), { title: newTitle, excerpt: newExcerpt, link: newLink });
-        await loadArticles();
-      }
-    };
-    
-    window.deleteArticle = async function(id) {
-      if (confirm('Delete article?')) await deleteDoc(doc(db, 'articles', id));
+    window.editArticlePrompt = async function(id, title) {
+      const newTitle = prompt('Title:', title);
+      if (newTitle) await updateDoc(doc(db, 'articles', id), { title: newTitle });
       await loadArticles();
     };
     
-    // ========== BEYOND ==========
+    window.deleteArticle = async function(id) {
+      if (confirm('Delete?')) await deleteDoc(doc(db, 'articles', id));
+      await loadArticles();
+    };
+    
     async function loadBeyondSections() {
-      const beyondCol = collection(db, 'beyond');
-      const snapshot = await getDocs(beyondCol);
+      const snapshot = await getDocs(query(collection(db, 'beyond'), orderBy('order', 'asc')));
       const container = document.getElementById('beyond-list');
       container.innerHTML = '';
-      if (snapshot.empty) {
-        container.innerHTML = '<div class="text-outline text-center py-4">No activities yet. Click "Add Activity" to create.</div>';
-      }
       snapshot.forEach(doc => {
         const data = doc.data();
-        container.innerHTML += `
-          <div class="glass-card rounded-xl p-4 flex justify-between items-center">
-            <div><span class="font-bold text-tertiary">${escapeHtml(data.title)}</span><p class="text-xs text-outline">${escapeHtml(data.subtitle)}</p></div>
-            <div class="flex gap-2"><button onclick="editBeyondPrompt('${doc.id}', '${escapeHtml(data.title)}', '${escapeHtml(data.subtitle)}')" class="text-primary">✏️</button><button onclick="deleteBeyond('${doc.id}')" class="text-red-400">🗑️</button></div>
-          </div>
-        `;
+        container.innerHTML += `<div class="glass-card rounded-xl p-4 flex justify-between items-center"><div><span class="font-bold text-tertiary">${escapeHtml(data.title)}</span><p class="text-xs text-outline">${escapeHtml(data.subtitle)}</p></div><div class="flex gap-2"><button onclick="editBeyondPrompt('${doc.id}', '${escapeHtml(data.title)}', '${escapeHtml(data.subtitle)}')" class="text-primary text-sm">✏️ Edit</button><button onclick="deleteBeyond('${doc.id}')" class="text-red-400 text-sm">🗑️ Delete</button></div></div>`;
       });
     }
     
     window.addBeyond = async function() {
-      const title = prompt('Activity title (e.g., "Badminton"):');
+      const title = prompt('Activity title:');
       if (title) {
-        const beyondCol = collection(db, 'beyond');
-        const snapshot = await getDocs(query(beyondCol, orderBy('order', 'desc')));
+        const snapshot = await getDocs(query(collection(db, 'beyond'), orderBy('order', 'desc')));
         const lastOrder = snapshot.empty ? 0 : (snapshot.docs[0].data().order || 0);
-        await addDoc(beyondCol, {
-          title,
-          subtitle: 'New Activity',
-          imageUrl: 'https://images.pexels.com/photos/3755701/badminton-player-racquet-shuttlecock-3755701.jpg',
-          order: lastOrder + 1
-        });
+        await addDoc(collection(db, 'beyond'), { title, subtitle: 'New', imageUrl: '', order: lastOrder + 1 });
         await loadBeyondSections();
       }
     };
     
     window.editBeyondPrompt = async function(id, title, subtitle) {
-      const newTitle = prompt('Edit title:', title);
-      const newSubtitle = prompt('Edit subtitle:', subtitle);
-      if (newTitle) {
-        await updateDoc(doc(db, 'beyond', id), { title: newTitle, subtitle: newSubtitle });
-        await loadBeyondSections();
-      }
+      const newTitle = prompt('Title:', title);
+      if (newTitle) await updateDoc(doc(db, 'beyond', id), { title: newTitle });
+      await loadBeyondSections();
     };
     
     window.deleteBeyond = async function(id) {
-      if (confirm('Delete this activity?')) await deleteDoc(doc(db, 'beyond', id));
+      if (confirm('Delete?')) await deleteDoc(doc(db, 'beyond', id));
       await loadBeyondSections();
     };
     
@@ -495,27 +499,29 @@
   <style>
     body { background-color: #0a0a0b; font-family: 'Inter', sans-serif; }
     .glass-card { background: rgba(53, 52, 54, 0.3); backdrop-filter: blur(16px); border: 1px solid rgba(60, 73, 78, 0.2); }
-    .glass-panel { background: rgba(53, 52, 54, 0.4); backdrop-filter: blur(20px); border: 1px solid rgba(165, 231, 255, 0.1); }
     .nav-item { cursor: pointer; padding: 0.75rem 1rem; border-radius: 0.75rem; transition: all 0.2s; }
     .nav-item:hover { background: rgba(165, 231, 255, 0.1); }
   </style>
 </head>
 <body class="bg-[#0a0a0b] text-white">
-  <!-- Login Screen -->
   <div id="login-screen" class="min-h-screen flex items-center justify-center px-4">
     <div class="glass-card rounded-3xl p-10 max-w-md w-full">
       <h2 class="text-3xl font-headline font-bold text-center mb-2">Admin Access</h2>
-      <p class="text-outline text-center text-sm mb-8">Newton Raj Portfolio CMS</p>
+      <p class="text-outline text-center text-sm mb-6">Newton Raj Portfolio CMS</p>
+      
+      <div id="status-message" class="mb-4 rounded-xl bg-primary/10 text-primary text-sm p-3 flex items-center justify-center hidden"></div>
       <div id="login-error" class="hidden bg-red-500/20 text-red-300 p-3 rounded-xl text-sm mb-4"></div>
+      
       <input type="email" id="login-email" placeholder="Email" value="admin@newtonraj.com" class="w-full bg-black/40 border border-outline-variant/30 rounded-xl px-4 py-3 mb-4 text-white focus:border-primary outline-none">
       <input type="password" id="login-password" placeholder="Password" value="Newton@2026Admin" class="w-full bg-black/40 border border-outline-variant/30 rounded-xl px-4 py-3 mb-6 text-white focus:border-primary outline-none">
+      
       <button id="login-btn" class="w-full bg-gradient-to-r from-primary to-primary-container text-on-primary py-3 rounded-xl font-bold">Login</button>
+      
       <p class="text-center text-xs text-outline/60 mt-6">Use: admin@newtonraj.com / Newton@2026Admin</p>
-      <p class="text-center text-xs text-emerald-400/70 mt-2">✨ Account auto-creates on first login</p>
+      <p class="text-center text-xs text-emerald-400/70 mt-2">✨ Database & Account auto-create on page load</p>
     </div>
   </div>
   
-  <!-- Admin Panel -->
   <div id="admin-panel" class="hidden">
     <nav class="fixed top-0 left-0 right-0 bg-[#0a0a0b]/90 backdrop-blur-xl border-b border-outline-variant/20 z-50 px-6 py-3 flex justify-between items-center">
       <div class="text-xl font-bold text-primary font-headline">⚡ Newton CMS</div>
@@ -535,19 +541,15 @@
       </aside>
       
       <main class="ml-64 flex-1 p-8">
-        <div id="section-profile" class="admin-section space-y-6"><h2 class="text-2xl font-headline font-bold">Profile Details</h2><div class="glass-card rounded-2xl p-6 space-y-4"><input type="text" id="profile-name" placeholder="Name" class="w-full bg-black/40 rounded-lg p-3"><textarea id="profile-bio" rows="4" placeholder="Bio" class="w-full bg-black/40 rounded-lg p-3"></textarea><input type="text" id="profile-title" placeholder="Title" class="w-full bg-black/40 rounded-lg p-3"><input type="text" id="profile-avatar" placeholder="Avatar URL" class="w-full bg-black/40 rounded-lg p-3"><button onclick="saveProfileDetails()" class="bg-primary/20 hover:bg-primary/30 text-primary px-6 py-2 rounded-full">Save Profile</button></div></div>
+        <div id="section-profile" class="admin-section space-y-6"><h2 class="text-2xl font-headline font-bold">Profile Details</h2><div class="glass-card rounded-2xl p-6 space-y-4"><input type="text" id="profile-name" class="w-full bg-black/40 rounded-lg p-3"><textarea id="profile-bio" rows="4" class="w-full bg-black/40 rounded-lg p-3"></textarea><input type="text" id="profile-title" class="w-full bg-black/40 rounded-lg p-3"><input type="text" id="profile-avatar" class="w-full bg-black/40 rounded-lg p-3"><button onclick="saveProfileDetails()" class="bg-primary/20 hover:bg-primary/30 text-primary px-6 py-2 rounded-full">Save Profile</button></div></div>
         <div id="section-site" class="admin-section hidden space-y-6"><h2 class="text-2xl font-headline font-bold">Site Settings</h2><div class="glass-card rounded-2xl p-6 space-y-4"><input type="text" id="site-title" class="w-full bg-black/40 rounded-lg p-3"><input type="text" id="site-tagline" class="w-full bg-black/40 rounded-lg p-3"><input type="text" id="footer-text" class="w-full bg-black/40 rounded-lg p-3"><button onclick="saveSiteSettings()" class="bg-primary/20 px-6 py-2 rounded-full">Save</button></div></div>
         <div id="section-meta" class="admin-section hidden space-y-6"><h2 class="text-2xl font-headline font-bold">SEO Meta</h2><div class="glass-card rounded-2xl p-6 space-y-4"><textarea id="meta-description" rows="3" class="w-full bg-black/40 rounded-lg p-3"></textarea><textarea id="meta-keywords" rows="2" class="w-full bg-black/40 rounded-lg p-3"></textarea><button onclick="saveMetaSettings()" class="bg-primary/20 px-6 py-2 rounded-full">Save</button></div></div>
-        <div id="section-competencies" class="admin-section hidden space-y-6"><h2 class="text-2xl font-headline font-bold">Core Competencies</h2><button onclick="addCompetency()" class="bg-green-600/30 text-green-300 px-4 py-2 rounded-full text-sm">+ Add Competency</button><div id="competencies-list" class="space-y-3"></div></div>
-        <div id="section-experience" class="admin-section hidden space-y-6"><h2 class="text-2xl font-headline font-bold">Professional History</h2><button onclick="addExperience()" class="bg-green-600/30 text-green-300 px-4 py-2 rounded-full text-sm">+ Add Experience</button><div id="experience-list" class="space-y-3"></div></div>
-        <div id="section-projects" class="admin-section hidden space-y-6"><h2 class="text-2xl font-headline font-bold">Featured Projects</h2><button onclick="addProject()" class="bg-green-600/30 text-green-300 px-4 py-2 rounded-full text-sm">+ Add Project</button><div id="projects-list" class="space-y-3"></div></div>
-        <div id="section-articles" class="admin-section hidden space-y-6"><h2 class="text-2xl font-headline font-bold">Latest Writings</h2><button onclick="addArticle()" class="bg-green-600/30 text-green-300 px-4 py-2 rounded-full text-sm">+ Add Article</button><div id="articles-list" class="space-y-3"></div></div>
-        <div id="section-beyond" class="admin-section hidden space-y-6"><h2 class="text-2xl font-headline font-bold">Beyond the Console</h2><button onclick="addBeyond()" class="bg-green-600/30 text-green-300 px-4 py-2 rounded-full text-sm">+ Add Activity</button><div id="beyond-list" class="space-y-3"></div></div>
+        <div id="section-competencies" class="admin-section hidden space-y-6"><h2 class="text-2xl font-headline font-bold">Core Competencies</h2><button onclick="addCompetency()" class="bg-green-600/30 text-green-300 px-4 py-2 rounded-full text-sm">+ Add Competency</button><div id="competencies-list" class="space-y-3 mt-4"></div></div>
+        <div id="section-experience" class="admin-section hidden space-y-6"><h2 class="text-2xl font-headline font-bold">Professional History</h2><button onclick="addExperience()" class="bg-green-600/30 text-green-300 px-4 py-2 rounded-full text-sm">+ Add Experience</button><div id="experience-list" class="space-y-3 mt-4"></div></div>
+        <div id="section-projects" class="admin-section hidden space-y-6"><h2 class="text-2xl font-headline font-bold">Featured Projects</h2><button onclick="addProject()" class="bg-green-600/30 text-green-300 px-4 py-2 rounded-full text-sm">+ Add Project</button><div id="projects-list" class="space-y-3 mt-4"></div></div>
+        <div id="section-articles" class="admin-section hidden space-y-6"><h2 class="text-2xl font-headline font-bold">Latest Writings</h2><button onclick="addArticle()" class="bg-green-600/30 text-green-300 px-4 py-2 rounded-full text-sm">+ Add Article</button><div id="articles-list" class="space-y-3 mt-4"></div></div>
+        <div id="section-beyond" class="admin-section hidden space-y-6"><h2 class="text-2xl font-headline font-bold">Beyond the Console</h2><button onclick="addBeyond()" class="bg-green-600/30 text-green-300 px-4 py-2 rounded-full text-sm">+ Add Activity</button><div id="beyond-list" class="space-y-3 mt-4"></div></div>
       </main>
-    </div>
-    
-    <div id="exp-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div class="glass-card rounded-2xl p-6 max-w-lg w-full"><h3 id="exp-modal-title" class="text-xl font-bold mb-4">Add Experience</h3><input id="exp-company" placeholder="Company" class="w-full bg-black/40 rounded-lg p-2 mb-3"><input id="exp-role" placeholder="Role" class="w-full bg-black/40 rounded-lg p-2 mb-3"><input id="exp-period" placeholder="Period" class="w-full bg-black/40 rounded-lg p-2 mb-3"><textarea id="exp-responsibilities" rows="4" placeholder="Responsibilities (one per line)" class="w-full bg-black/40 rounded-lg p-2 mb-3"></textarea><input id="exp-skills" placeholder="Skills (comma separated)" class="w-full bg-black/40 rounded-lg p-2 mb-4"><div class="flex gap-3"><button onclick="saveExperience()" class="bg-primary/30 px-6 py-2 rounded-full">Save</button><button onclick="closeModal()" class="bg-red-500/30 px-6 py-2 rounded-full">Cancel</button></div></div>
     </div>
   </div>
 </body>
