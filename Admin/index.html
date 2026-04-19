@@ -7,11 +7,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Firebase SDKs -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-    import { getFirestore, collection, doc, getDocs, getDoc, addDoc, updateDoc, deleteDoc, query, orderBy, setDoc } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
-    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
+    import { getFirestore, collection, doc, getDocs, getDoc, addDoc, updateDoc, deleteDoc, query, orderBy, setDoc, writeBatch } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
     
     const firebaseConfig = {
       apiKey: "AIzaSyA2w5fLQp9u_dMIR0O4E3I8j36CGXHL7Jc",
@@ -27,14 +26,34 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
     
-    // Admin credentials (hardcoded for demo - in production use Firebase Auth console)
+    // Admin credentials
     const ADMIN_EMAIL = "admin@newtonraj.com";
     const ADMIN_PASSWORD = "Newton@2026Admin";
+    
+    // Auto-create admin user if not exists
+    async function ensureAdminUser() {
+      try {
+        await signInWithEmailAndPassword(auth, ADMIN_EMAIL, ADMIN_PASSWORD);
+        console.log("Admin user exists");
+        return true;
+      } catch (error) {
+        if (error.code === 'auth/user-not-found') {
+          try {
+            await createUserWithEmailAndPassword(auth, ADMIN_EMAIL, ADMIN_PASSWORD);
+            console.log("Admin user created successfully!");
+            return true;
+          } catch (createError) {
+            console.error("Error creating admin:", createError.message);
+            return false;
+          }
+        }
+        return false;
+      }
+    }
     
     window.db = db;
     window.auth = auth;
     
-    // Global state
     let currentUser = null;
     
     // Auth UI elements
@@ -51,7 +70,6 @@
     const navItems = document.querySelectorAll('.nav-item');
     const sections = document.querySelectorAll('.admin-section');
     
-    // Section references
     let currentEditId = null;
     let currentEditCollection = null;
     
@@ -63,9 +81,12 @@
         adminPanel.classList.remove('hidden');
         adminUserEmail.textContent = user.email;
         await loadAllSections();
+        await ensureAdminUser(); // Ensure admin exists
       } else {
         loginScreen.classList.remove('hidden');
         adminPanel.classList.add('hidden');
+        // Try to auto-create on login screen load
+        ensureAdminUser();
       }
     });
     
@@ -76,7 +97,13 @@
       try {
         await signInWithEmailAndPassword(auth, email, password);
       } catch (error) {
-        loginError.textContent = "Login failed: " + error.message;
+        if (error.code === 'auth/user-not-found') {
+          loginError.textContent = "User not found. Please use: admin@newtonraj.com / Newton@2026Admin";
+        } else if (error.code === 'auth/wrong-password') {
+          loginError.textContent = "Wrong password. Use: Newton@2026Admin";
+        } else {
+          loginError.textContent = "Login failed: " + error.message;
+        }
         loginError.classList.remove('hidden');
       }
     });
@@ -178,13 +205,16 @@
       const snapshot = await getDocs(q);
       const container = document.getElementById('competencies-list');
       container.innerHTML = '';
+      if (snapshot.empty) {
+        container.innerHTML = '<div class="text-outline text-center py-4">No competencies yet. Click "Add Competency" to create.</div>';
+      }
       snapshot.forEach(doc => {
         const data = doc.data();
         container.innerHTML += `
           <div class="glass-card rounded-xl p-4 flex justify-between items-center">
-            <div><span class="font-bold text-primary">${data.name}</span><span class="text-sm text-outline ml-3">${data.percentage}%</span></div>
+            <div><span class="font-bold text-primary">${escapeHtml(data.name)}</span><span class="text-sm text-outline ml-3">${data.percentage}%</span></div>
             <div class="flex gap-2">
-              <button onclick="editCompetency('${doc.id}', '${data.name}', ${data.percentage}, ${data.order})" class="text-primary text-sm">✏️ Edit</button>
+              <button onclick="editCompetency('${doc.id}', '${escapeHtml(data.name)}', ${data.percentage})" class="text-primary text-sm">✏️ Edit</button>
               <button onclick="deleteCompetency('${doc.id}')" class="text-red-400 text-sm">🗑️ Delete</button>
             </div>
           </div>
@@ -198,13 +228,13 @@
       if (name && percentage) {
         const compCol = collection(db, 'competencies');
         const snapshot = await getDocs(query(compCol, orderBy('order', 'desc')));
-        const lastOrder = snapshot.empty ? 0 : snapshot.docs[0].data().order || 0;
+        const lastOrder = snapshot.empty ? 0 : (snapshot.docs[0].data().order || 0);
         await addDoc(compCol, { name, percentage, order: lastOrder + 1 });
         await loadCoreCompetencies();
       }
     };
     
-    window.editCompetency = async function(id, name, percentage, order) {
+    window.editCompetency = async function(id, name, percentage) {
       const newName = prompt('Edit competency name:', name);
       const newPercentage = parseInt(prompt('Edit percentage:', percentage));
       if (newName && newPercentage) {
@@ -220,22 +250,25 @@
       }
     };
     
-    // ========== EXPERIENCE (Professional History) ==========
+    // ========== EXPERIENCE ==========
     async function loadExperience() {
       const expCol = collection(db, 'experience');
       const snapshot = await getDocs(expCol);
       const container = document.getElementById('experience-list');
       container.innerHTML = '';
+      if (snapshot.empty) {
+        container.innerHTML = '<div class="text-outline text-center py-4">No experience entries. Click "Add Experience" to create.</div>';
+      }
       snapshot.forEach(doc => {
         const data = doc.data();
         container.innerHTML += `
           <div class="glass-card rounded-xl p-4">
             <div class="flex justify-between items-start">
-              <div><h3 class="font-bold text-primary">${data.company}</h3><p class="text-sm text-outline">${data.role}</p><p class="text-xs text-outline/60">${data.period}</p></div>
+              <div><h3 class="font-bold text-primary">${escapeHtml(data.company)}</h3><p class="text-sm text-outline">${escapeHtml(data.role)}</p><p class="text-xs text-outline/60">${escapeHtml(data.period)}</p></div>
               <div class="flex gap-2"><button onclick="editExperience('${doc.id}')" class="text-primary text-sm">✏️ Edit</button><button onclick="deleteExperience('${doc.id}')" class="text-red-400 text-sm">🗑️ Delete</button></div>
             </div>
-            <ul class="mt-2 text-xs text-outline list-disc list-inside">${data.responsibilities?.map(r => `<li>${r}</li>`).join('') || ''}</ul>
-            <div class="flex flex-wrap gap-1 mt-2">${data.skills?.map(s => `<span class="text-[9px] bg-primary/20 px-2 py-0.5 rounded">${s}</span>`).join('') || ''}</div>
+            <ul class="mt-2 text-xs text-outline list-disc list-inside">${(data.responsibilities || []).map(r => `<li>${escapeHtml(r)}</li>`).join('') || ''}</ul>
+            <div class="flex flex-wrap gap-1 mt-2">${(data.skills || []).map(s => `<span class="text-[9px] bg-primary/20 px-2 py-0.5 rounded">${escapeHtml(s)}</span>`).join('') || ''}</div>
           </div>
         `;
       });
@@ -262,8 +295,8 @@
         document.getElementById('exp-company').value = data.company || '';
         document.getElementById('exp-role').value = data.role || '';
         document.getElementById('exp-period').value = data.period || '';
-        document.getElementById('exp-responsibilities').value = data.responsibilities?.join('\n') || '';
-        document.getElementById('exp-skills').value = data.skills?.join(', ') || '';
+        document.getElementById('exp-responsibilities').value = (data.responsibilities || []).join('\n');
+        document.getElementById('exp-skills').value = (data.skills || []).join(', ');
         document.getElementById('exp-modal-title').textContent = 'Edit Experience';
         document.getElementById('exp-modal').classList.remove('hidden');
       }
@@ -281,7 +314,9 @@
       if (currentEditId) {
         await updateDoc(doc(db, 'experience', currentEditId), data);
       } else {
-        await addDoc(collection(db, 'experience'), data);
+        const snapshot = await getDocs(query(collection(db, 'experience'), orderBy('order', 'desc')));
+        const lastOrder = snapshot.empty ? 0 : (snapshot.docs[0].data().order || 0);
+        await addDoc(collection(db, 'experience'), { ...data, order: lastOrder + 1 });
       }
       document.getElementById('exp-modal').classList.add('hidden');
       await loadExperience();
@@ -298,21 +333,23 @@
       document.getElementById('exp-modal').classList.add('hidden');
     };
     
-    // ========== PROJECTS CRUD ==========
+    // ========== PROJECTS ==========
     async function loadProjects() {
       const projCol = collection(db, 'projects');
       const q = query(projCol, orderBy('order', 'asc'));
       const snapshot = await getDocs(q);
       const container = document.getElementById('projects-list');
       container.innerHTML = '';
+      if (snapshot.empty) {
+        container.innerHTML = '<div class="text-outline text-center py-4">No projects yet. Click "Add Project" to create.</div>';
+      }
       snapshot.forEach(doc => {
         const data = doc.data();
         container.innerHTML += `
           <div class="glass-card rounded-xl p-4">
-            <div class="flex justify-between"><h3 class="font-bold text-primary">${data.title}</h3><div class="flex gap-2"><button onclick="editProject('${doc.id}')" class="text-primary">✏️</button><button onclick="deleteProject('${doc.id}')" class="text-red-400">🗑️</button></div></div>
-            <p class="text-xs text-outline mt-1">${data.category}</p>
-            <p class="text-sm mt-2">${data.description?.substring(0, 100)}...</p>
-            <div class="flex gap-2 mt-2"><span class="text-[10px] bg-primary/20 px-2 py-0.5 rounded">Order: ${data.order}</span></div>
+            <div class="flex justify-between"><h3 class="font-bold text-primary">${escapeHtml(data.title)}</h3><div class="flex gap-2"><button onclick="editProjectPrompt('${doc.id}', '${escapeHtml(data.title)}', '${escapeHtml(data.category)}', '${escapeHtml(data.description)}')" class="text-primary">✏️</button><button onclick="deleteProject('${doc.id}')" class="text-red-400">🗑️</button></div></div>
+            <p class="text-xs text-outline mt-1">${escapeHtml(data.category)}</p>
+            <p class="text-sm mt-2">${escapeHtml(data.description?.substring(0, 100))}...</p>
           </div>
         `;
       });
@@ -323,7 +360,7 @@
       if (title) {
         const projCol = collection(db, 'projects');
         const snapshot = await getDocs(query(projCol, orderBy('order', 'desc')));
-        const lastOrder = snapshot.empty ? 0 : snapshot.docs[0].data().order || 0;
+        const lastOrder = snapshot.empty ? 0 : (snapshot.docs[0].data().order || 0);
         await addDoc(projCol, {
           title,
           category: 'New Project',
@@ -337,17 +374,13 @@
       }
     };
     
-    window.editProject = async function(id) {
-      const docSnap = await getDoc(doc(db, 'projects', id));
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        const newTitle = prompt('Edit title:', data.title);
-        const newCategory = prompt('Edit category:', data.category);
-        const newDesc = prompt('Edit description:', data.description);
-        if (newTitle) {
-          await updateDoc(doc(db, 'projects', id), { title: newTitle, category: newCategory, description: newDesc });
-          await loadProjects();
-        }
+    window.editProjectPrompt = async function(id, title, category, description) {
+      const newTitle = prompt('Edit title:', title);
+      const newCategory = prompt('Edit category:', category);
+      const newDesc = prompt('Edit description:', description);
+      if (newTitle) {
+        await updateDoc(doc(db, 'projects', id), { title: newTitle, category: newCategory, description: newDesc });
+        await loadProjects();
       }
     };
     
@@ -356,20 +389,22 @@
       await loadProjects();
     };
     
-    // ========== ARTICLES CRUD ==========
+    // ========== ARTICLES ==========
     async function loadArticles() {
       const artCol = collection(db, 'articles');
       const q = query(artCol, orderBy('publishedAt', 'desc'));
       const snapshot = await getDocs(q);
       const container = document.getElementById('articles-list');
       container.innerHTML = '';
+      if (snapshot.empty) {
+        container.innerHTML = '<div class="text-outline text-center py-4">No articles yet. Click "Add Article" to create.</div>';
+      }
       snapshot.forEach(doc => {
         const data = doc.data();
         container.innerHTML += `
           <div class="glass-card rounded-xl p-4">
-            <div class="flex justify-between"><h3 class="font-bold text-secondary">${data.title}</h3><div class="flex gap-2"><button onclick="editArticle('${doc.id}')" class="text-primary">✏️</button><button onclick="deleteArticle('${doc.id}')" class="text-red-400">🗑️</button></div></div>
-            <p class="text-xs text-outline mt-1">${data.tag || 'Article'} | ${data.publishedAt?.substring(0,10) || ''}</p>
-            <p class="text-sm mt-2">${data.excerpt?.substring(0, 80)}...</p>
+            <div class="flex justify-between"><h3 class="font-bold text-secondary">${escapeHtml(data.title)}</h3><div class="flex gap-2"><button onclick="editArticlePrompt('${doc.id}', '${escapeHtml(data.title)}', '${escapeHtml(data.excerpt)}', '${escapeHtml(data.link)}')" class="text-primary">✏️</button><button onclick="deleteArticle('${doc.id}')" class="text-red-400">🗑️</button></div></div>
+            <p class="text-xs text-outline mt-1">${escapeHtml(data.tag || 'Article')}</p>
           </div>
         `;
       });
@@ -390,17 +425,13 @@
       }
     };
     
-    window.editArticle = async function(id) {
-      const docSnap = await getDoc(doc(db, 'articles', id));
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        const newTitle = prompt('Edit title:', data.title);
-        const newExcerpt = prompt('Edit excerpt:', data.excerpt);
-        const newLink = prompt('Edit link URL:', data.link);
-        if (newTitle) {
-          await updateDoc(doc(db, 'articles', id), { title: newTitle, excerpt: newExcerpt, link: newLink });
-          await loadArticles();
-        }
+    window.editArticlePrompt = async function(id, title, excerpt, link) {
+      const newTitle = prompt('Edit title:', title);
+      const newExcerpt = prompt('Edit excerpt:', excerpt);
+      const newLink = prompt('Edit link URL:', link);
+      if (newTitle) {
+        await updateDoc(doc(db, 'articles', id), { title: newTitle, excerpt: newExcerpt, link: newLink });
+        await loadArticles();
       }
     };
     
@@ -409,18 +440,21 @@
       await loadArticles();
     };
     
-    // ========== BEYOND SECTIONS ==========
+    // ========== BEYOND ==========
     async function loadBeyondSections() {
       const beyondCol = collection(db, 'beyond');
       const snapshot = await getDocs(beyondCol);
       const container = document.getElementById('beyond-list');
       container.innerHTML = '';
+      if (snapshot.empty) {
+        container.innerHTML = '<div class="text-outline text-center py-4">No activities yet. Click "Add Activity" to create.</div>';
+      }
       snapshot.forEach(doc => {
         const data = doc.data();
         container.innerHTML += `
           <div class="glass-card rounded-xl p-4 flex justify-between items-center">
-            <div><span class="font-bold text-tertiary">${data.title}</span><p class="text-xs text-outline">${data.subtitle}</p></div>
-            <div class="flex gap-2"><button onclick="editBeyond('${doc.id}')" class="text-primary">✏️</button><button onclick="deleteBeyond('${doc.id}')" class="text-red-400">🗑️</button></div>
+            <div><span class="font-bold text-tertiary">${escapeHtml(data.title)}</span><p class="text-xs text-outline">${escapeHtml(data.subtitle)}</p></div>
+            <div class="flex gap-2"><button onclick="editBeyondPrompt('${doc.id}', '${escapeHtml(data.title)}', '${escapeHtml(data.subtitle)}')" class="text-primary">✏️</button><button onclick="deleteBeyond('${doc.id}')" class="text-red-400">🗑️</button></div>
           </div>
         `;
       });
@@ -429,26 +463,25 @@
     window.addBeyond = async function() {
       const title = prompt('Activity title (e.g., "Badminton"):');
       if (title) {
-        await addDoc(collection(db, 'beyond'), {
+        const beyondCol = collection(db, 'beyond');
+        const snapshot = await getDocs(query(beyondCol, orderBy('order', 'desc')));
+        const lastOrder = snapshot.empty ? 0 : (snapshot.docs[0].data().order || 0);
+        await addDoc(beyondCol, {
           title,
           subtitle: 'New Activity',
           imageUrl: 'https://images.pexels.com/photos/3755701/badminton-player-racquet-shuttlecock-3755701.jpg',
-          order: Date.now()
+          order: lastOrder + 1
         });
         await loadBeyondSections();
       }
     };
     
-    window.editBeyond = async function(id) {
-      const docSnap = await getDoc(doc(db, 'beyond', id));
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        const newTitle = prompt('Edit title:', data.title);
-        const newSubtitle = prompt('Edit subtitle:', data.subtitle);
-        if (newTitle) {
-          await updateDoc(doc(db, 'beyond', id), { title: newTitle, subtitle: newSubtitle });
-          await loadBeyondSections();
-        }
+    window.editBeyondPrompt = async function(id, title, subtitle) {
+      const newTitle = prompt('Edit title:', title);
+      const newSubtitle = prompt('Edit subtitle:', subtitle);
+      if (newTitle) {
+        await updateDoc(doc(db, 'beyond', id), { title: newTitle, subtitle: newSubtitle });
+        await loadBeyondSections();
       }
     };
     
@@ -456,11 +489,15 @@
       if (confirm('Delete this activity?')) await deleteDoc(doc(db, 'beyond', id));
       await loadBeyondSections();
     };
+    
+    function escapeHtml(str) { if(!str) return ''; return str.replace(/[&<>]/g, function(m){ if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
   </script>
   <style>
     body { background-color: #0a0a0b; font-family: 'Inter', sans-serif; }
     .glass-card { background: rgba(53, 52, 54, 0.3); backdrop-filter: blur(16px); border: 1px solid rgba(60, 73, 78, 0.2); }
     .glass-panel { background: rgba(53, 52, 54, 0.4); backdrop-filter: blur(20px); border: 1px solid rgba(165, 231, 255, 0.1); }
+    .nav-item { cursor: pointer; padding: 0.75rem 1rem; border-radius: 0.75rem; transition: all 0.2s; }
+    .nav-item:hover { background: rgba(165, 231, 255, 0.1); }
   </style>
 </head>
 <body class="bg-[#0a0a0b] text-white">
@@ -470,10 +507,11 @@
       <h2 class="text-3xl font-headline font-bold text-center mb-2">Admin Access</h2>
       <p class="text-outline text-center text-sm mb-8">Newton Raj Portfolio CMS</p>
       <div id="login-error" class="hidden bg-red-500/20 text-red-300 p-3 rounded-xl text-sm mb-4"></div>
-      <input type="email" id="login-email" placeholder="Email" class="w-full bg-black/40 border border-outline-variant/30 rounded-xl px-4 py-3 mb-4 text-white focus:border-primary outline-none">
-      <input type="password" id="login-password" placeholder="Password" class="w-full bg-black/40 border border-outline-variant/30 rounded-xl px-4 py-3 mb-6 text-white focus:border-primary outline-none">
+      <input type="email" id="login-email" placeholder="Email" value="admin@newtonraj.com" class="w-full bg-black/40 border border-outline-variant/30 rounded-xl px-4 py-3 mb-4 text-white focus:border-primary outline-none">
+      <input type="password" id="login-password" placeholder="Password" value="Newton@2026Admin" class="w-full bg-black/40 border border-outline-variant/30 rounded-xl px-4 py-3 mb-6 text-white focus:border-primary outline-none">
       <button id="login-btn" class="w-full bg-gradient-to-r from-primary to-primary-container text-on-primary py-3 rounded-xl font-bold">Login</button>
-      <p class="text-center text-xs text-outline/60 mt-6">Demo: admin@newtonraj.com / Newton@2026Admin</p>
+      <p class="text-center text-xs text-outline/60 mt-6">Use: admin@newtonraj.com / Newton@2026Admin</p>
+      <p class="text-center text-xs text-emerald-400/70 mt-2">✨ Account auto-creates on first login</p>
     </div>
   </div>
   
@@ -485,52 +523,31 @@
     </nav>
     
     <div class="flex pt-16">
-      <!-- Sidebar -->
-      <aside class="w-64 fixed left-0 top-16 bottom-0 border-r border-outline-variant/20 p-4 space-y-2">
-        <div class="nav-item cursor-pointer p-3 rounded-xl transition-all" data-target="section-profile">👤 My Details</div>
-        <div class="nav-item cursor-pointer p-3 rounded-xl transition-all" data-target="section-site">⚙️ Site Settings</div>
-        <div class="nav-item cursor-pointer p-3 rounded-xl transition-all" data-target="section-meta">🔍 Meta Settings</div>
-        <div class="nav-item cursor-pointer p-3 rounded-xl transition-all" data-target="section-competencies">📊 Core Competencies</div>
-        <div class="nav-item cursor-pointer p-3 rounded-xl transition-all" data-target="section-experience">🏢 Professional History</div>
-        <div class="nav-item cursor-pointer p-3 rounded-xl transition-all" data-target="section-projects">🚀 Featured Projects</div>
-        <div class="nav-item cursor-pointer p-3 rounded-xl transition-all" data-target="section-articles">📝 Latest Writings</div>
-        <div class="nav-item cursor-pointer p-3 rounded-xl transition-all" data-target="section-beyond">🎯 Beyond the Console</div>
+      <aside class="w-64 fixed left-0 top-16 bottom-0 border-r border-outline-variant/20 p-4 space-y-2 overflow-y-auto">
+        <div class="nav-item" data-target="section-profile">👤 My Details</div>
+        <div class="nav-item" data-target="section-site">⚙️ Site Settings</div>
+        <div class="nav-item" data-target="section-meta">🔍 Meta Settings</div>
+        <div class="nav-item" data-target="section-competencies">📊 Core Competencies</div>
+        <div class="nav-item" data-target="section-experience">🏢 Professional History</div>
+        <div class="nav-item" data-target="section-projects">🚀 Featured Projects</div>
+        <div class="nav-item" data-target="section-articles">📝 Latest Writings</div>
+        <div class="nav-item" data-target="section-beyond">🎯 Beyond the Console</div>
       </aside>
       
-      <!-- Main Content -->
       <main class="ml-64 flex-1 p-8">
-        <!-- Profile Section -->
-        <div id="section-profile" class="admin-section space-y-6">
-          <h2 class="text-2xl font-headline font-bold">Profile Details</h2>
-          <div class="glass-card rounded-2xl p-6 space-y-4"><input type="text" id="profile-name" placeholder="Name" class="w-full bg-black/40 rounded-lg p-3"><textarea id="profile-bio" rows="4" placeholder="Bio" class="w-full bg-black/40 rounded-lg p-3"></textarea><input type="text" id="profile-title" placeholder="Title" class="w-full bg-black/40 rounded-lg p-3"><input type="text" id="profile-avatar" placeholder="Avatar URL" class="w-full bg-black/40 rounded-lg p-3"><button onclick="saveProfileDetails()" class="bg-primary/20 hover:bg-primary/30 text-primary px-6 py-2 rounded-full">Save Profile</button></div>
-        </div>
-        
-        <!-- Site Settings -->
+        <div id="section-profile" class="admin-section space-y-6"><h2 class="text-2xl font-headline font-bold">Profile Details</h2><div class="glass-card rounded-2xl p-6 space-y-4"><input type="text" id="profile-name" placeholder="Name" class="w-full bg-black/40 rounded-lg p-3"><textarea id="profile-bio" rows="4" placeholder="Bio" class="w-full bg-black/40 rounded-lg p-3"></textarea><input type="text" id="profile-title" placeholder="Title" class="w-full bg-black/40 rounded-lg p-3"><input type="text" id="profile-avatar" placeholder="Avatar URL" class="w-full bg-black/40 rounded-lg p-3"><button onclick="saveProfileDetails()" class="bg-primary/20 hover:bg-primary/30 text-primary px-6 py-2 rounded-full">Save Profile</button></div></div>
         <div id="section-site" class="admin-section hidden space-y-6"><h2 class="text-2xl font-headline font-bold">Site Settings</h2><div class="glass-card rounded-2xl p-6 space-y-4"><input type="text" id="site-title" class="w-full bg-black/40 rounded-lg p-3"><input type="text" id="site-tagline" class="w-full bg-black/40 rounded-lg p-3"><input type="text" id="footer-text" class="w-full bg-black/40 rounded-lg p-3"><button onclick="saveSiteSettings()" class="bg-primary/20 px-6 py-2 rounded-full">Save</button></div></div>
-        
-        <!-- Meta Settings -->
         <div id="section-meta" class="admin-section hidden space-y-6"><h2 class="text-2xl font-headline font-bold">SEO Meta</h2><div class="glass-card rounded-2xl p-6 space-y-4"><textarea id="meta-description" rows="3" class="w-full bg-black/40 rounded-lg p-3"></textarea><textarea id="meta-keywords" rows="2" class="w-full bg-black/40 rounded-lg p-3"></textarea><button onclick="saveMetaSettings()" class="bg-primary/20 px-6 py-2 rounded-full">Save</button></div></div>
-        
-        <!-- Core Competencies -->
         <div id="section-competencies" class="admin-section hidden space-y-6"><h2 class="text-2xl font-headline font-bold">Core Competencies</h2><button onclick="addCompetency()" class="bg-green-600/30 text-green-300 px-4 py-2 rounded-full text-sm">+ Add Competency</button><div id="competencies-list" class="space-y-3"></div></div>
-        
-        <!-- Professional History -->
         <div id="section-experience" class="admin-section hidden space-y-6"><h2 class="text-2xl font-headline font-bold">Professional History</h2><button onclick="addExperience()" class="bg-green-600/30 text-green-300 px-4 py-2 rounded-full text-sm">+ Add Experience</button><div id="experience-list" class="space-y-3"></div></div>
-        
-        <!-- Projects -->
         <div id="section-projects" class="admin-section hidden space-y-6"><h2 class="text-2xl font-headline font-bold">Featured Projects</h2><button onclick="addProject()" class="bg-green-600/30 text-green-300 px-4 py-2 rounded-full text-sm">+ Add Project</button><div id="projects-list" class="space-y-3"></div></div>
-        
-        <!-- Articles -->
         <div id="section-articles" class="admin-section hidden space-y-6"><h2 class="text-2xl font-headline font-bold">Latest Writings</h2><button onclick="addArticle()" class="bg-green-600/30 text-green-300 px-4 py-2 rounded-full text-sm">+ Add Article</button><div id="articles-list" class="space-y-3"></div></div>
-        
-        <!-- Beyond -->
         <div id="section-beyond" class="admin-section hidden space-y-6"><h2 class="text-2xl font-headline font-bold">Beyond the Console</h2><button onclick="addBeyond()" class="bg-green-600/30 text-green-300 px-4 py-2 rounded-full text-sm">+ Add Activity</button><div id="beyond-list" class="space-y-3"></div></div>
       </main>
     </div>
     
-    <!-- Modal for Experience -->
     <div id="exp-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div class="glass-card rounded-2xl p-6 max-w-lg w-full"><h3 id="exp-modal-title" class="text-xl font-bold mb-4">Add Experience</h3><input id="exp-company" placeholder="Company" class="w-full bg-black/40 rounded-lg p-2 mb-3"><input id="exp-role" placeholder="Role" class="w-full bg-black/40 rounded-lg p-2 mb-3"><input id="exp-period" placeholder="Period (e.g., May 2025 - Present)" class="w-full bg-black/40 rounded-lg p-2 mb-3"><textarea id="exp-responsibilities" rows="4" placeholder="Responsibilities (one per line)" class="w-full bg-black/40 rounded-lg p-2 mb-3"></textarea><input id="exp-skills" placeholder="Skills (comma separated)" class="w-full bg-black/40 rounded-lg p-2 mb-4"><div class="flex gap-3"><button onclick="saveExperience()" class="bg-primary/30 px-6 py-2 rounded-full">Save</button><button onclick="closeModal()" class="bg-red-500/30 px-6 py-2 rounded-full">Cancel</button></div></div>
+      <div class="glass-card rounded-2xl p-6 max-w-lg w-full"><h3 id="exp-modal-title" class="text-xl font-bold mb-4">Add Experience</h3><input id="exp-company" placeholder="Company" class="w-full bg-black/40 rounded-lg p-2 mb-3"><input id="exp-role" placeholder="Role" class="w-full bg-black/40 rounded-lg p-2 mb-3"><input id="exp-period" placeholder="Period" class="w-full bg-black/40 rounded-lg p-2 mb-3"><textarea id="exp-responsibilities" rows="4" placeholder="Responsibilities (one per line)" class="w-full bg-black/40 rounded-lg p-2 mb-3"></textarea><input id="exp-skills" placeholder="Skills (comma separated)" class="w-full bg-black/40 rounded-lg p-2 mb-4"><div class="flex gap-3"><button onclick="saveExperience()" class="bg-primary/30 px-6 py-2 rounded-full">Save</button><button onclick="closeModal()" class="bg-red-500/30 px-6 py-2 rounded-full">Cancel</button></div></div>
     </div>
   </div>
 </body>
