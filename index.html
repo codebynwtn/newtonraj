@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Newton Raj | Hyper-Lucid AI Architect — Full Career Roadmap</title>
+  <!-- Google Fonts & Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Firebase SDKs -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+    
+    const firebaseConfig = {
+      apiKey: "AIzaSyA2w5fLQp9u_dMIR0O4E3I8j36CGXHL7Jc",
+      authDomain: "newtonraj-f68dd.firebaseapp.com",
+      projectId: "newtonraj-f68dd",
+      storageBucket: "newtonraj-f68dd.firebasestorage.app",
+      messagingSenderId: "845369865790",
+      appId: "1:845369865790:web:ba142109595ca6c1c2436f",
+      measurementId: "G-XH6C3RFFCD"
+    };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    
+    window.db = db;
+    window.collection = collection;
+    window.addDoc = addDoc;
+    window.getDocs = getDocs;
+    window.query = query;
+    window.orderBy = orderBy;
+
+    async function loadFirestoreContent() {
+      try {
+        const articlesCol = collection(db, "articles");
+        const articlesSnapshot = await getDocs(query(articlesCol, orderBy("publishedAt", "desc")));
+        const articlesList = [];
+        articlesSnapshot.forEach(doc => articlesList.push({ id: doc.id, ...doc.data() }));
+        
+        const projectsCol = collection(db, "projects");
+        const projectsSnapshot = await getDocs(query(projectsCol, orderBy("order", "asc")));
+        const projectsList = [];
+        projectsSnapshot.forEach(doc => projectsList.push({ id: doc.id, ...doc.data() }));
+        
+        const articlesGrid = document.getElementById('dynamic-articles-grid');
+        if (articlesGrid && articlesList.length) {
+          articlesGrid.innerHTML = articlesList.map(art => `
+            <div class="glass-card rounded-3xl p-8 hover:-translate-y-2 transition-all duration-300 group">
+              <div class="text-outline-variant mb-6 flex justify-between items-start">
+                <span class="material-symbols-outlined text-4xl">${art.icon || "article"}</span>
+                <span class="text-[10px] font-bold tracking-tighter text-outline">${art.tag || "INSIGHT"}</span>
+              </div>
+              <h4 class="text-xl font-headline font-bold mb-3">${escapeHtml(art.title)}</h4>
+              <p class="text-sm text-outline mb-6 leading-relaxed">${escapeHtml(art.excerpt || "")}</p>
+              <a href="${art.link || '#'}" target="_blank" class="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2 group">
+                Read Article <span class="material-symbols-outlined text-xs group-hover:translate-x-1 transition-transform">arrow_forward</span>
+              </a>
+            </div>
+          `).join('');
+        }
+        
+        const projectsFeatured = document.getElementById('dynamic-projects-grid');
+        if (projectsFeatured && projectsList.length) {
+          const mainProject = projectsList[0];
+          const secondaryProjects = projectsList.slice(1,3);
+          let bentoHtml = `
+            <div class="md:col-span-8 group relative overflow-hidden rounded-[2rem] glass-card p-8 md:p-12 flex flex-col justify-end min-h-[500px]">
+              <div class="absolute inset-0 z-0 overflow-hidden">
+                <img class="w-full h-full object-cover opacity-20 group-hover:scale-110 transition-transform duration-700" src="${mainProject.imageUrl || 'https://picsum.photos/id/0/800/600'}" alt="${mainProject.title}">
+                <div class="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent"></div>
+              </div>
+              <div class="relative z-10">
+                <span class="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-bold tracking-widest uppercase mb-4 border border-primary/20">${mainProject.category || "Featured"}</span>
+                <h3 class="text-4xl font-headline font-bold mb-4">${escapeHtml(mainProject.title)}</h3>
+                <p class="text-outline text-lg max-w-xl mb-8">${escapeHtml(mainProject.description || "")}</p>
+                <div class="flex gap-4">
+                  <a href="${mainProject.link || '#'}" target="_blank" class="flex items-center gap-2 text-primary hover:text-white transition-colors">
+                    <span class="material-symbols-outlined text-sm">link</span>
+                    <span class="text-xs font-bold uppercase tracking-widest">Case Study</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+          `;
+          if(secondaryProjects[0]) {
+            bentoHtml += `
+              <div class="md:col-span-4 group relative overflow-hidden rounded-[2rem] glass-card p-8 flex flex-col">
+                <div class="flex-grow">
+                  <div class="w-full aspect-square rounded-2xl overflow-hidden mb-6 bg-surface-container-low border border-outline-variant/15">
+                    <img class="w-full h-full object-cover opacity-40 group-hover:rotate-3 transition-transform duration-500" src="${secondaryProjects[0].imageUrl || 'https://picsum.photos/id/20/400/400'}" alt="${secondaryProjects[0].title}">
+                  </div>
+                  <span class="inline-block px-3 py-1 rounded-full bg-secondary/10 text-secondary text-[10px] font-bold tracking-widest uppercase mb-4 border border-secondary/20">${secondaryProjects[0].category || "Innovation"}</span>
+                  <h3 class="text-2xl font-headline font-bold mb-2">${escapeHtml(secondaryProjects[0].title)}</h3>
+                  <p class="text-outline text-sm leading-relaxed">${escapeHtml(secondaryProjects[0].excerpt || "")}</p>
+                </div>
+              </div>
+            `;
+          }
+          projectsFeatured.innerHTML = bentoHtml;
+        }
+      } catch(e) { console.warn("Firestore init:", e); }
+    }
+    
+    function escapeHtml(str) { if(!str) return ''; return str.replace(/[&<>]/g, function(m){if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
+    
+    window.addEventListener('DOMContentLoaded', () => {
+      loadFirestoreContent();
+      const contactForm = document.getElementById('firebase-contact-form');
+      if(contactForm) {
+        contactForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const name = document.getElementById('contact-name').value.trim();
+          const email = document.getElementById('contact-email').value.trim();
+          const message = document.getElementById('contact-message').value.trim();
+          if(!name || !email || !message) { alert("Please fill all fields"); return; }
+          const submitBtn = contactForm.querySelector('button[type="submit"]');
+          const originalText = submitBtn.innerText;
+          submitBtn.innerText = "Sending...";
+          submitBtn.disabled = true;
+          try {
+            await addDoc(collection(window.db, "contacts"), {
+              name, email, message,
+              timestamp: new Date().toISOString(),
+              read: false
+            });
+            alert("✅ Message transmitted successfully!");
+            contactForm.reset();
+          } catch(err) { alert("Error: " + err.message); }
+          finally { submitBtn.innerText = originalText; submitBtn.disabled = false; }
+        });
+      }
+    });
+  </script>
+  <style>
+    body { background-color: #131314; color: #e5e2e3; font-family: 'Inter', sans-serif; }
+    .glass-card { background: rgba(53, 52, 54, 0.4); backdrop-filter: blur(24px); border: 1px solid rgba(60, 73, 78, 0.15); }
+    .glass-panel { background: rgba(53, 52, 54, 0.4); backdrop-filter: blur(24px); border: 1px solid rgba(60, 73, 78, 0.15); }
+    .ghost-border { border: 1px solid rgba(60, 73, 78, 0.2); }
+    .text-gradient-primary { background: linear-gradient(135deg, #a5e7ff 0%, #00d2ff 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .bg-noise { background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E"); pointer-events: none; }
+    ::selection { background: #47d6ff; color: #003543; }
+    .timeline-dot { box-shadow: 0 0 0 4px rgba(165,231,255,0.2); transition: all 0.2s ease; }
+    .group:hover .timeline-dot { box-shadow: 0 0 0 6px rgba(165,231,255,0.4); transform: scale(1.1); }
+  </style>
+</head>
+<body class="bg-background text-on-background overflow-x-hidden selection:bg-primary selection:text-on-primary">
+  <div class="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+    <div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-primary/10 blur-[120px]"></div>
+    <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-secondary/10 blur-[100px]"></div>
+    <div class="absolute top-1/4 right-1/4 w-32 h-32 rounded-full bg-primary-container/20 blur-[60px]"></div>
+    <div class="absolute inset-0 bg-noise"></div>
+  </div>
+
+  <nav class="fixed top-6 left-1/2 -translate-x-1/2 w-[95%] max-w-6xl rounded-full border border-outline-variant/15 bg-[#131314]/80 backdrop-blur-3xl z-50 flex justify-between items-center px-6 md:px-8 py-3 shadow-[0_20px_50px_rgba(165,231,255,0.04)]">
+    <div class="text-xl font-extrabold tracking-tighter text-primary font-headline">NEWTON RAJ</div>
+    <div class="hidden md:flex gap-8 items-center">
+      <a href="#" class="font-headline tracking-[0.05em] uppercase text-xs font-bold text-primary border-b border-primary/50">Home</a>
+      <a href="#experience" class="font-headline tracking-[0.05em] uppercase text-xs font-bold text-slate-400 hover:text-primary transition">Experience</a>
+      <a href="#projects" class="font-headline tracking-[0.05em] uppercase text-xs font-bold text-slate-400 hover:text-primary transition">Projects</a>
+      <a href="#articles" class="font-headline tracking-[0.05em] uppercase text-xs font-bold text-slate-400 hover:text-primary transition">Articles</a>
+    </div>
+    <button onclick="document.getElementById('contact-form-section').scrollIntoView({behavior:'smooth'})" class="bg-primary/10 hover:bg-primary/20 text-primary px-6 py-2 rounded-full font-headline tracking-[0.05em] uppercase text-xs font-bold ghost-border transition active:scale-95">Contact</button>
+  </nav>
+
+  <main class="relative pt-32 pb-24 px-6 md:px-12 max-w-7xl mx-auto">
+    <!-- Hero Section (unchanged elegance) -->
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+      <div class="lg:col-span-7 space-y-8">
+        <div class="space-y-4">
+          <span class="inline-block px-4 py-1.5 rounded-full glass-panel ghost-border text-primary font-label text-[10px] tracking-[0.2em] uppercase font-semibold">AI · Cloud · Full Stack</span>
+          <h1 class="font-headline text-6xl md:text-8xl font-extrabold tracking-tighter leading-[0.9]">Newton <br/><span class="text-gradient-primary">Raj</span></h1>
+          <p class="font-headline text-xl md:text-2xl text-outline font-medium max-w-xl leading-relaxed">Driving Innovation through <span class="text-on-surface">AI &amp; Software Engineering</span>. Crafting the digital infrastructure of tomorrow.</p>
+        </div>
+        <div class="flex flex-wrap gap-4">
+          <button onclick="document.getElementById('projects').scrollIntoView({behavior:'smooth'})" class="group flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-on-primary px-8 py-4 rounded-full font-headline font-bold text-sm tracking-wide transition hover:scale-105">View Projects <span class="material-symbols-outlined text-sm">arrow_forward</span></button>
+          <button onclick="document.getElementById('contact-form-section').scrollIntoView({behavior:'smooth'})" class="flex items-center gap-2 glass-panel ghost-border px-8 py-4 rounded-full font-headline font-bold text-sm hover:bg-surface-container-highest/60 transition">Get in Touch</button>
+        </div>
+      </div>
+      <div class="lg:col-span-5 relative">
+        <div class="relative z-10 p-1 rounded-[2.5rem] bg-gradient-to-br from-outline-variant/20 to-transparent">
+          <div class="relative aspect-square overflow-hidden rounded-[2.3rem] glass-panel">
+            <img alt="Newton Raj profile" class="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700 scale-105 hover:scale-100" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCzS06WmOI4QZUDvmOqn06ylPgGTqNtb6PXRNVRXEvx8ql4De-J3-BbivK-xm3qiNlvXDCVFtr8d2NuJ0HJQlBmCo6okGTszzofbNh-vXq7f3t6Y9R0NK8xNJlJjWi1mxU_HyiVyLn-O87ajD6pVCDkyT3gRJtIeXUL8xTfj7PM7mmIR7Loj6ia8ZNg0zDl5aLyImPOfuLhABqZAlTvlVqHc1eep_f9QpmRNNmao68LH7L5q0szmeRhuHW3i9gACjEjGYAyntiaag"/>
+          </div>
+        </div>
+        <div class="absolute -top-6 -right-6 w-24 h-24 glass-panel ghost-border rounded-3xl flex items-center justify-center z-20 animate-bounce" style="animation-duration: 4s;"><span class="material-symbols-outlined text-primary text-4xl">terminal</span></div>
+        <div class="absolute -bottom-10 -left-10 w-32 h-32 glass-panel ghost-border rounded-full flex flex-col items-center justify-center text-center p-4"><span class="text-primary font-headline font-extrabold text-2xl">05+</span><span class="text-[8px] font-label uppercase tracking-widest text-slate-400">Years XP</span></div>
+      </div>
+    </section>
+
+    <!-- About + Bento Row -->
+    <section class="mt-32 grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="md:col-span-2 glass-panel ghost-border rounded-[2rem] p-8 md:p-12 hover:bg-surface-container-highest/30 transition">
+        <div class="flex items-center gap-4 mb-6"><div class="w-12 h-12 rounded-full bg-secondary/10 flex items-center justify-center"><span class="material-symbols-outlined text-secondary">verified_user</span></div><h2 class="font-headline text-2xl font-bold">About Me</h2></div>
+        <p class="text-lg md:text-xl text-outline leading-relaxed">I am a <span class="text-on-surface">Senior Software Engineer & AI Architect</span> with 5+ years architecting scalable cloud systems, LLM-driven products, and high-performance full-stack solutions. As an entrepreneur & tech lead, I bridge cutting-edge AI with robust business strategies.</p>
+        <div class="mt-8 flex flex-wrap gap-3"><span class="px-4 py-2 rounded-full bg-surface-container-low text-xs font-bold text-slate-300 ghost-border">LLM / GPT</span><span class="px-4 py-2 rounded-full bg-surface-container-low text-xs font-bold text-slate-300 ghost-border">Kubernetes</span><span class="px-4 py-2 rounded-full bg-surface-container-low text-xs font-bold text-slate-300 ghost-border">Rust/Go</span><span class="px-4 py-2 rounded-full bg-surface-container-low text-xs font-bold text-slate-300 ghost-border">Next.js 15</span></div>
+      </div>
+      <div class="flex flex-col gap-6">
+        <div class="h-1/2 glass-panel ghost-border rounded-[2rem] p-8 flex flex-col justify-center items-center text-center"><span class="material-symbols-outlined text-primary-container text-4xl mb-2">cloud_queue</span><h3 class="font-headline font-bold">Cloud Architect</h3><p class="text-xs text-outline uppercase tracking-widest mt-1">AWS / GCP / Azure</p></div>
+        <div class="h-1/2 glass-panel ghost-border rounded-[2rem] p-8 flex flex-col justify-center items-center text-center"><span class="material-symbols-outlined text-secondary text-4xl mb-2">rocket_launch</span><h3 class="font-headline font-bold">Founder Mindset</h3><p class="text-xs text-outline uppercase tracking-widest mt-1">Startup Operations</p></div>
+      </div>
+    </section>
+
+    <!-- Core Competencies Skills -->
+    <section class="mt-24 space-y-8">
+      <div><h2 class="font-headline text-4xl font-extrabold tracking-tighter">Core Competencies</h2><p class="text-outline mt-2">Specialized in high-concurrency architectures and LLM integration.</p></div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+        <div><div class="flex justify-between"><span class="font-headline font-bold uppercase text-xs tracking-widest">AI Integration &amp; LLMs</span><span class="text-primary text-sm">94%</span></div><div class="h-1.5 w-full bg-surface-container-highest rounded-full mt-2 overflow-hidden"><div class="h-full bg-gradient-to-r from-primary to-secondary w-[94%] shadow-[0_0_10px_rgba(165,231,255,0.4)]"></div></div></div>
+        <div><div class="flex justify-between"><span class="font-headline font-bold uppercase text-xs tracking-widest">Backend Systems (Go/Rust)</span><span class="text-primary text-sm">98%</span></div><div class="h-1.5 w-full bg-surface-container-highest rounded-full mt-2 overflow-hidden"><div class="h-full bg-gradient-to-r from-primary to-secondary w-[98%]"></div></div></div>
+        <div><div class="flex justify-between"><span class="font-headline font-bold uppercase text-xs tracking-widest">Full-stack Excellence</span><span class="text-primary text-sm">92%</span></div><div class="h-1.5 w-full bg-surface-container-highest rounded-full mt-2 overflow-hidden"><div class="h-full bg-gradient-to-r from-primary to-secondary w-[92%]"></div></div></div>
+        <div><div class="flex justify-between"><span class="font-headline font-bold uppercase text-xs tracking-widest">Infrastructure as Code</span><span class="text-primary text-sm">89%</span></div><div class="h-1.5 w-full bg-surface-container-highest rounded-full mt-2 overflow-hidden"><div class="h-full bg-gradient-to-r from-primary to-secondary w-[89%]"></div></div></div>
+      </div>
+    </section>
+
+    <!-- ========== PROFESSIONAL HISTORY - ENHANCED ROADMAP (FULL DETAILS) ========== -->
+    <section id="experience" class="mt-32">
+      <div class="flex items-center gap-4 mb-12"><div class="h-px flex-1 bg-gradient-to-r from-transparent via-outline-variant/30 to-transparent"></div><h2 class="font-headline text-xs font-bold tracking-[0.2em] uppercase text-outline">Professional History — Full Roadmap</h2><div class="h-px flex-1 bg-gradient-to-r from-transparent via-outline-variant/30 to-transparent"></div></div>
+      
+      <!-- Dual Column Timeline (Ignite + Lkcareers) -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
+        <!-- IGNITE LEARNING COLUMN -->
+        <div>
+          <div class="sticky top-28 z-20 mb-8 flex items-center gap-4 bg-surface-container-low/70 backdrop-blur-md rounded-2xl p-4 border border-primary/20">
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/30 to-primary-container/30 flex items-center justify-center"><span class="material-symbols-outlined text-3xl text-primary">bolt</span></div>
+            <div><h2 class="font-headline text-2xl font-bold tracking-tight">Ignite Learning</h2><p class="text-xs text-outline uppercase tracking-wider">Full-time · 3 yrs 7 mos · Colombo/Hybrid</p></div>
+          </div>
+          <div class="relative pl-8 md:pl-10 border-l-2 border-primary/30 ml-5 space-y-12">
+            <!-- Senior Software Engineer Team Lead -->
+            <div class="relative group"><div class="absolute -left-[42px] top-1 w-5 h-5 rounded-full timeline-dot bg-primary ring-4 ring-primary/20"></div>
+              <div class="glass-card rounded-2xl p-6 transition-all hover:border-primary/30"><div class="flex flex-wrap justify-between items-start gap-2 mb-3"><span class="text-primary font-headline font-bold text-lg">Senior Software Engineer Team Lead</span><span class="text-[11px] font-bold uppercase bg-primary/10 text-primary px-3 py-1 rounded-full">May 2025 — Present · 1 yr</span></div>
+              <ul class="space-y-2 text-sm text-on-surface-variant"><li class="flex gap-2"><span class="material-symbols-outlined text-primary text-base">check_circle</span> Lead cross-functional team, end-to-end delivery & performance.</li><li class="flex gap-2"><span class="material-symbols-outlined text-primary text-base">architecture</span> Drive architecture decisions, code reviews & scalable best practices.</li><li class="flex gap-2"><span class="material-symbols-outlined text-primary text-base">sprint</span> Agile ceremonies, sprint planning (Jira, GitHub Enterprise).</li><li class="flex gap-2"><span class="material-symbols-outlined text-primary text-base">auto_awesome</span> AI/LLM integrations, OCR systems, GPT-based apps using Python.</li><li class="flex gap-2"><span class="material-symbols-outlined text-primary text-base">groups</span> Mentor junior engineers, foster high-performance culture.</li></ul>
+              <div class="flex flex-wrap gap-2 mt-5"><span class="text-[9px] bg-surface-container-high px-2 py-1 rounded-full text-primary/80">Python</span><span class="text-[9px] bg-surface-container-high px-2 py-1 rounded-full text-primary/80">JavaScript/TS</span><span class="text-[9px] bg-surface-container-high px-2 py-1 rounded-full text-primary/80">React.js</span><span class="text-[9px] bg-surface-container-high px-2 py-1 rounded-full text-primary/80">Node.js</span><span class="text-[9px] bg-surface-container-high px-2 py-1 rounded-full text-primary/80">+14 skills</span></div></div></div>
+            <!-- Senior Lead Software Engineer -->
+            <div class="relative group"><div class="absolute -left-[42px] top-1 w-5 h-5 rounded-full timeline-dot bg-primary/70"></div>
+              <div class="glass-card rounded-2xl p-6"><div class="flex flex-wrap justify-between items-start gap-2 mb-3"><span class="text-primary font-headline font-bold text-lg">Senior Lead Software Engineer</span><span class="text-[11px] font-bold uppercase bg-surface-container-high text-outline px-3 py-1 rounded-full">Apr 2024 — May 2025 · 1 yr 2 mos</span></div>
+              <ul class="space-y-2 text-sm"><li class="flex gap-2"><span class="material-symbols-outlined text-primary text-base">cloud</span> High-level architecture, DevOps workflows, product leadership.</li><li class="flex gap-2"><span class="material-symbols-outlined text-primary text-base">public</span> End-to-end cloud services (AWS, Azure, GoDaddy, Bluehost).</li><li class="flex gap-2"><span class="material-symbols-outlined text-primary text-base">neurology</span> Team efforts in OCR, LLM, GPT APIs & AI product innovation.</li><li class="flex gap-2"><span class="material-symbols-outlined text-primary text-base">meeting_room</span> Client meetings, requirements gathering, tech/business alignment.</li></ul></div></div>
+            <!-- Software Engineer -->
+            <div class="relative group"><div class="absolute -left-[42px] top-1 w-5 h-5 rounded-full timeline-dot bg-primary/50"></div>
+              <div class="glass-card rounded-2xl p-6"><div class="flex flex-wrap justify-between items-start gap-2 mb-3"><span class="text-primary font-headline font-bold text-lg">Software Engineer</span><span class="text-[11px] font-bold uppercase bg-surface-container-high text-outline px-3 py-1 rounded-full">Oct 2022 — Mar 2024 · 1 yr 6 mos</span></div>
+              <ul class="space-y-2 text-sm"><li class="flex gap-2"><span class="material-symbols-outlined text-primary text-base">developer_mode</span> Technical execution of complex AI-integrated web modules.</li><li class="flex gap-2"><span class="material-symbols-outlined text-primary text-base">api</span> DevOps, cloud & API integrations, cross-team collaboration.</li><li class="flex gap-2"><span class="material-symbols-outlined text-primary text-base">code_blocks</span> Full-stack ownership, deployment improvements & bug tracking.</li><li class="flex gap-2"><span class="material-symbols-outlined text-primary text-base">school</span> Mentored juniors & code reviews.</li></ul>
+              <div class="flex flex-wrap gap-2 mt-4"><span class="text-[9px] bg-surface-container-high px-2 py-1 rounded-full">React.js</span><span class="text-[9px] bg-surface-container-high px-2 py-1 rounded-full">Node.js</span><span class="text-[9px] bg-surface-container-high px-2 py-1 rounded-full">+8 skills</span></div></div></div>
+            <div class="text-center text-[10px] uppercase tracking-widest text-outline/60 mt-4">Ignite Learning · Oct 2022 → Present</div>
+          </div>
+        </div>
+        
+        <!-- LKCAREERS COLUMN -->
+        <div>
+          <div class="sticky top-28 z-20 mb-8 flex items-center gap-4 bg-surface-container-low/70 backdrop-blur-md rounded-2xl p-4 border border-secondary/20">
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-secondary/30 to-tertiary/30 flex items-center justify-center"><span class="material-symbols-outlined text-3xl text-secondary">work_history</span></div>
+            <div><h2 class="font-headline text-2xl font-bold tracking-tight">Lkcareers</h2><p class="text-xs text-outline uppercase tracking-wider">Full-time · 3 yrs 7 mos · Colombo/Hybrid</p></div>
+          </div>
+          <div class="relative pl-8 md:pl-10 border-l-2 border-secondary/30 ml-5 space-y-12">
+            <!-- Senior Software Engineer Project Lead -->
+            <div class="relative group"><div class="absolute -left-[42px] top-1 w-5 h-5 rounded-full timeline-dot bg-secondary ring-4 ring-secondary/20"></div>
+              <div class="glass-card rounded-2xl p-6"><div class="flex flex-wrap justify-between items-start gap-2 mb-3"><span class="text-secondary font-headline font-bold text-lg">Senior Software Engineer Project Lead</span><span class="text-[11px] font-bold uppercase bg-secondary/10 text-secondary px-3 py-1 rounded-full">Apr 2024 — Present · 2 yrs 1 mo</span></div>
+              <ul class="space-y-2 text-sm"><li class="flex gap-2"><span class="material-symbols-outlined text-secondary text-base">deployed_code</span> High-level architecture, DevOps workflows, product leadership.</li><li class="flex gap-2"><span class="material-symbols-outlined text-secondary text-base">cloud_done</span> Cloud services (AWS, Azure, GoDaddy, Bluehost).</li><li class="flex gap-2"><span class="material-symbols-outlined text-secondary text-base">neurology</span> Lead AI innovation: OCR, LLM, GPT APIs & Python pipelines.</li><li class="flex gap-2"><span class="material-symbols-outlined text-secondary text-base">campaign</span> Client meetings, requirement alignment, Agile (Jira, GitHub Enterprise).</li></ul></div></div>
+            <!-- Software Engineer -->
+            <div class="relative group"><div class="absolute -left-[42px] top-1 w-5 h-5 rounded-full timeline-dot bg-secondary/60"></div>
+              <div class="glass-card rounded-2xl p-6"><div class="flex flex-wrap justify-between items-start gap-2 mb-3"><span class="text-secondary font-headline font-bold text-lg">Software Engineer</span><span class="text-[11px] font-bold uppercase bg-surface-container-high text-outline px-3 py-1 rounded-full">Oct 2022 — Mar 2024 · 1 yr 6 mos</span></div>
+              <ul class="space-y-2 text-sm"><li class="flex gap-2"><span class="material-symbols-outlined text-secondary text-base">integration_instructions</span> Technical execution of AI-integrated web modules.</li><li class="flex gap-2"><span class="material-symbols-outlined text-secondary text-base">devices</span> DevOps, cloud, API integrations, cross-functional synergy.</li><li class="flex gap-2"><span class="material-symbols-outlined text-secondary text-base">engineering</span> Mentored junior devs, full-stack ownership, improved deployment processes.</li></ul>
+              <div class="flex flex-wrap gap-2 mt-4"><span class="text-[9px] bg-surface-container-high px-2 py-1 rounded-full text-secondary/90">JavaScript</span><span class="text-[9px] bg-surface-container-high px-2 py-1 rounded-full text-secondary/90">Laravel</span><span class="text-[9px] bg-surface-container-high px-2 py-1 rounded-full text-secondary/90">+4 skills</span></div></div></div>
+            <div class="text-center text-[10px] uppercase tracking-widest text-outline/60 mt-4">Lkcareers · Oct 2022 → Present</div>
+          </div>
+        </div>
+      </div>
+      <!-- Synergy note -->
+      <div class="mt-16 glass-panel rounded-3xl p-6 md:p-8 border border-primary/20 text-center"><span class="material-symbols-outlined text-primary align-middle mr-2">merge_type</span> <span class="text-sm font-medium">Concurrent leadership across Ignite Learning & Lkcareers — driving AI-first architecture, cloud-native solutions & team excellence.</span></div>
+    </section>
+
+    <!-- Projects + Articles + Beyond + Contact (keeping existing dynamic blocks) -->
+    <section id="projects" class="mt-32"><div class="flex items-center gap-4 mb-12"><span class="w-12 h-[1px] bg-primary/30"></span><h2 class="font-headline text-xs font-bold tracking-[0.2em] uppercase text-primary">Featured Projects</h2></div><div id="dynamic-projects-grid" class="grid grid-cols-1 md:grid-cols-12 gap-6 min-h-[400px]"><div class="md:col-span-12 text-center text-outline py-20">Loading dynamic projects from Firestore...</div></div></section>
+    <section id="articles" class="mt-32"><div class="flex items-center gap-4 mb-12"><span class="w-12 h-[1px] bg-secondary/30"></span><h2 class="font-headline text-xs font-bold tracking-[0.2em] uppercase text-secondary">Latest Writings & AI Explorations</h2></div><div id="dynamic-articles-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"><div class="glass-card rounded-3xl p-8 animate-pulse bg-surface-container-high/50">Loading articles from Firestore...</div></div></section>
+    <section class="mt-32"><div class="flex items-center gap-4 mb-12"><span class="w-12 h-[1px] bg-tertiary/30"></span><h2 class="font-headline text-xs font-bold tracking-[0.2em] uppercase text-tertiary">Beyond the Console</h2></div><div class="grid grid-cols-1 md:grid-cols-3 gap-8"><div class="group relative aspect-[3/4] rounded-3xl overflow-hidden glass-card"><img class="absolute inset-0 w-full h-full object-cover opacity-30 group-hover:opacity-50 transition-all duration-700" src="https://images.pexels.com/photos/3755701/badminton-player-racquet-shuttlecock-3755701.jpg?auto=compress&cs=tinysrgb&w=600" alt="Badminton"><div class="absolute inset-0 p-8 flex flex-col justify-end bg-gradient-to-t from-background to-transparent"><h5 class="text-2xl font-headline font-bold">Badminton</h5><p class="text-xs text-outline uppercase tracking-widest">Power & Precision</p></div></div><div class="group relative aspect-[3/4] rounded-3xl overflow-hidden glass-card"><img class="absolute inset-0 w-full h-full object-cover opacity-30 group-hover:opacity-50 transition-all" src="https://images.pexels.com/photos/4791463/chess-king-board-game-4791463.jpg?auto=compress&cs=tinysrgb&w=600" alt="Chess"><div class="absolute inset-0 p-8 flex flex-col justify-end bg-gradient-to-t from-background to-transparent"><h5 class="text-2xl font-headline font-bold">Chess</h5><p class="text-xs text-outline uppercase tracking-widest">Strategic Depth</p></div></div><div class="group relative aspect-[3/4] rounded-3xl overflow-hidden glass-card"><img class="absolute inset-0 w-full h-full object-cover opacity-30 group-hover:opacity-50 transition-all" src="https://images.pexels.com/photos/4491451/recording-podcast-studio-microphone-4491451.jpg?auto=compress&cs=tinysrgb&w=600" alt="YouTube/Blogging"><div class="absolute inset-0 p-8 flex flex-col justify-end bg-gradient-to-t from-background to-transparent"><h5 class="text-2xl font-headline font-bold">YouTube/Blogger</h5><p class="text-xs text-outline uppercase tracking-widest">Digital Storytelling</p></div></div></div></section>
+    <section id="contact-form-section" class="mt-32 mb-24"><div class="max-w-4xl mx-auto glass-card rounded-[3rem] p-12 md:p-20 relative overflow-hidden"><div class="absolute -top-24 -right-24 w-64 h-64 bg-primary/10 blur-[100px]"></div><div class="relative z-10 text-center mb-16"><h2 class="text-4xl md:text-5xl font-headline font-bold mb-6">Initiate <span class="text-gradient-primary">Contact</span></h2><p class="text-outline max-w-md mx-auto">Have a project or want to talk AI, LLMs, or cloud? Drop a message — stored directly in Firestore.</p></div><form id="firebase-contact-form" class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-12"><div class="space-y-8"><div class="relative"><input class="peer w-full bg-transparent border-b border-outline-variant py-4 focus:outline-none focus:border-primary transition-colors text-on-surface" id="contact-name" placeholder=" " type="text" required><label class="absolute left-0 top-4 text-outline text-sm uppercase tracking-widest pointer-events-none transition-all peer-focus:-top-4 peer-focus:text-primary peer-focus:text-xs">Full Name</label></div><div class="relative"><input class="peer w-full bg-transparent border-b border-outline-variant py-4 focus:outline-none focus:border-primary transition-colors text-on-surface" id="contact-email" placeholder=" " type="email" required><label class="absolute left-0 top-4 text-outline text-sm uppercase tracking-widest pointer-events-none transition-all peer-focus:-top-4 peer-focus:text-primary peer-focus:text-xs">Email Address</label></div></div><div class="relative"><textarea class="peer w-full bg-transparent border-b border-outline-variant py-4 focus:outline-none focus:border-primary transition-colors resize-none" id="contact-message" rows="4" required></textarea><label class="absolute left-0 top-4 text-outline text-sm uppercase tracking-widest pointer-events-none transition-all peer-focus:-top-4 peer-focus:text-primary peer-focus:text-xs">Your Inquiry</label></div><div class="md:col-span-2 flex justify-center pt-8"><button type="submit" class="group flex items-center gap-4 bg-surface-container-highest px-10 py-5 rounded-full border border-outline-variant/15 hover:bg-gradient-to-r from-primary to-primary-container hover:text-on-primary transition-all"><span class="font-headline font-bold uppercase tracking-widest">Send Transmission</span><span class="material-symbols-outlined text-xl group-hover:translate-x-2">send</span></button></div></form></div></section>
+  </main>
+
+  <footer class="w-full border-t border-outline-variant/10 bg-transparent mt-10"><div class="max-w-7xl mx-auto py-12 px-8 flex flex-col md:flex-row justify-between items-center gap-8"><div><div class="text-slate-200 font-bold font-headline tracking-tighter">NEWTON RAJ</div><div class="font-['Inter'] text-[10px] tracking-[0.2em] uppercase text-slate-500 mt-2">© 2026 Newton Raj — Hyper-Lucid Archive</div></div><div class="flex gap-8"><a href="https://lk.linkedin.com/in/newton-raj-software-engineer" target="_blank" class="text-slate-500 hover:text-primary text-xs uppercase tracking-widest">LinkedIn</a><a href="#" class="text-slate-500 hover:text-primary text-xs uppercase tracking-widest">GitHub</a><a href="#" class="text-slate-500 hover:text-primary text-xs uppercase tracking-widest">Medium</a></div></div></footer>
+</body>
+</html>
