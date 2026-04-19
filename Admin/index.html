@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel | Newton Raj Portfolio CMS</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Firebase SDKs -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+    import { getFirestore, collection, doc, getDocs, getDoc, addDoc, updateDoc, deleteDoc, query, orderBy, setDoc } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
+    
+    const firebaseConfig = {
+      apiKey: "AIzaSyA2w5fLQp9u_dMIR0O4E3I8j36CGXHL7Jc",
+      authDomain: "newtonraj-f68dd.firebaseapp.com",
+      projectId: "newtonraj-f68dd",
+      storageBucket: "newtonraj-f68dd.firebasestorage.app",
+      messagingSenderId: "845369865790",
+      appId: "1:845369865790:web:ba142109595ca6c1c2436f",
+      measurementId: "G-XH6C3RFFCD"
+    };
+    
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    
+    // Admin credentials (hardcoded for demo - in production use Firebase Auth console)
+    const ADMIN_EMAIL = "admin@newtonraj.com";
+    const ADMIN_PASSWORD = "Newton@2026Admin";
+    
+    window.db = db;
+    window.auth = auth;
+    
+    // Global state
+    let currentUser = null;
+    
+    // Auth UI elements
+    const loginScreen = document.getElementById('login-screen');
+    const adminPanel = document.getElementById('admin-panel');
+    const loginError = document.getElementById('login-error');
+    const loginEmail = document.getElementById('login-email');
+    const loginPassword = document.getElementById('login-password');
+    const loginBtn = document.getElementById('login-btn');
+    const logoutBtn = document.getElementById('logout-btn');
+    const adminUserEmail = document.getElementById('admin-user-email');
+    
+    // Navigation
+    const navItems = document.querySelectorAll('.nav-item');
+    const sections = document.querySelectorAll('.admin-section');
+    
+    // Section references
+    let currentEditId = null;
+    let currentEditCollection = null;
+    
+    // Initialize admin
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        currentUser = user;
+        loginScreen.classList.add('hidden');
+        adminPanel.classList.remove('hidden');
+        adminUserEmail.textContent = user.email;
+        await loadAllSections();
+      } else {
+        loginScreen.classList.remove('hidden');
+        adminPanel.classList.add('hidden');
+      }
+    });
+    
+    loginBtn.addEventListener('click', async () => {
+      const email = loginEmail.value.trim();
+      const password = loginPassword.value.trim();
+      loginError.classList.add('hidden');
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+      } catch (error) {
+        loginError.textContent = "Login failed: " + error.message;
+        loginError.classList.remove('hidden');
+      }
+    });
+    
+    logoutBtn.addEventListener('click', async () => {
+      await signOut(auth);
+    });
+    
+    // Navigation
+    navItems.forEach(item => {
+      item.addEventListener('click', () => {
+        const target = item.dataset.target;
+        navItems.forEach(nav => nav.classList.remove('border-primary', 'text-primary', 'bg-primary/10'));
+        item.classList.add('border-primary', 'text-primary', 'bg-primary/10');
+        sections.forEach(section => section.classList.add('hidden'));
+        document.getElementById(target).classList.remove('hidden');
+      });
+    });
+    
+    // ========== LOAD ALL DATA ==========
+    async function loadAllSections() {
+      await loadProfileDetails();
+      await loadSiteSettings();
+      await loadMetaSettings();
+      await loadCoreCompetencies();
+      await loadExperience();
+      await loadProjects();
+      await loadArticles();
+      await loadBeyondSections();
+    }
+    
+    // ========== PROFILE DETAILS ==========
+    async function loadProfileDetails() {
+      const profileRef = doc(db, 'adminSettings', 'profile');
+      const docSnap = await getDoc(profileRef);
+      const data = docSnap.exists() ? docSnap.data() : {};
+      document.getElementById('profile-name').value = data.name || 'Newton Raj';
+      document.getElementById('profile-title').value = data.title || 'Senior Software Engineer & AI Architect';
+      document.getElementById('profile-bio').value = data.bio || 'I am a Senior Software Engineer & AI Architect with 5+ years architecting scalable cloud systems, LLM-driven products, and high-performance full-stack solutions.';
+      document.getElementById('profile-avatar').value = data.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuCzS06WmOI4QZUDvmOqn06ylPgGTqNtb6PXRNVRXEvx8ql4De-J3-BbivK-xm3qiNlvXDCVFtr8d2NuJ0HJQlBmCo6okGTszzofbNh-vXq7f3t6Y9R0NK8xNJlJjWi1mxU_HyiVyLn-O87ajD6pVCDkyT3gRJtIeXUL8xTfj7PM7mmIR7Loj6ia8ZNg0zDl5aLyImPOfuLhABqZAlTvlVqHc1eep_f9QpmRNNmao68LH7L5q0szmeRhuHW3i9gACjEjGYAyntiaag';
+    }
+    
+    window.saveProfileDetails = async function() {
+      const data = {
+        name: document.getElementById('profile-name').value,
+        title: document.getElementById('profile-title').value,
+        bio: document.getElementById('profile-bio').value,
+        avatar: document.getElementById('profile-avatar').value,
+        updatedAt: new Date().toISOString()
+      };
+      await setDoc(doc(db, 'adminSettings', 'profile'), data);
+      alert('Profile saved successfully!');
+    };
+    
+    // ========== SITE SETTINGS ==========
+    async function loadSiteSettings() {
+      const settingsRef = doc(db, 'adminSettings', 'site');
+      const docSnap = await getDoc(settingsRef);
+      const data = docSnap.exists() ? docSnap.data() : {};
+      document.getElementById('site-title').value = data.siteTitle || 'Newton Raj | Software Engineering | Hyper-Lucid AI Architect';
+      document.getElementById('site-tagline').value = data.tagline || 'Driving Innovation through AI & Software Engineering';
+      document.getElementById('footer-text').value = data.footerText || '© 2026 Newton Raj';
+    }
+    
+    window.saveSiteSettings = async function() {
+      const data = {
+        siteTitle: document.getElementById('site-title').value,
+        tagline: document.getElementById('site-tagline').value,
+        footerText: document.getElementById('footer-text').value,
+        updatedAt: new Date().toISOString()
+      };
+      await setDoc(doc(db, 'adminSettings', 'site'), data);
+      alert('Site settings saved!');
+    };
+    
+    // ========== META SETTINGS ==========
+    async function loadMetaSettings() {
+      const metaRef = doc(db, 'adminSettings', 'meta');
+      const docSnap = await getDoc(metaRef);
+      const data = docSnap.exists() ? docSnap.data() : {};
+      document.getElementById('meta-description').value = data.description || 'Newton Raj - Senior Software Engineer & AI Architect portfolio';
+      document.getElementById('meta-keywords').value = data.keywords || 'AI, Software Engineer, Cloud Architect, Full Stack, LLM';
+    }
+    
+    window.saveMetaSettings = async function() {
+      const data = {
+        description: document.getElementById('meta-description').value,
+        keywords: document.getElementById('meta-keywords').value,
+        updatedAt: new Date().toISOString()
+      };
+      await setDoc(doc(db, 'adminSettings', 'meta'), data);
+      alert('Meta settings saved!');
+    };
+    
+    // ========== CORE COMPETENCIES ==========
+    async function loadCoreCompetencies() {
+      const compCol = collection(db, 'competencies');
+      const q = query(compCol, orderBy('order', 'asc'));
+      const snapshot = await getDocs(q);
+      const container = document.getElementById('competencies-list');
+      container.innerHTML = '';
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        container.innerHTML += `
+          <div class="glass-card rounded-xl p-4 flex justify-between items-center">
+            <div><span class="font-bold text-primary">${data.name}</span><span class="text-sm text-outline ml-3">${data.percentage}%</span></div>
+            <div class="flex gap-2">
+              <button onclick="editCompetency('${doc.id}', '${data.name}', ${data.percentage}, ${data.order})" class="text-primary text-sm">✏️ Edit</button>
+              <button onclick="deleteCompetency('${doc.id}')" class="text-red-400 text-sm">🗑️ Delete</button>
+            </div>
+          </div>
+        `;
+      });
+    }
+    
+    window.addCompetency = async function() {
+      const name = prompt('Enter competency name (e.g., "AI Integration & LLMs"):');
+      const percentage = parseInt(prompt('Enter percentage (0-100):'));
+      if (name && percentage) {
+        const compCol = collection(db, 'competencies');
+        const snapshot = await getDocs(query(compCol, orderBy('order', 'desc')));
+        const lastOrder = snapshot.empty ? 0 : snapshot.docs[0].data().order || 0;
+        await addDoc(compCol, { name, percentage, order: lastOrder + 1 });
+        await loadCoreCompetencies();
+      }
+    };
+    
+    window.editCompetency = async function(id, name, percentage, order) {
+      const newName = prompt('Edit competency name:', name);
+      const newPercentage = parseInt(prompt('Edit percentage:', percentage));
+      if (newName && newPercentage) {
+        await updateDoc(doc(db, 'competencies', id), { name: newName, percentage: newPercentage });
+        await loadCoreCompetencies();
+      }
+    };
+    
+    window.deleteCompetency = async function(id) {
+      if (confirm('Delete this competency?')) {
+        await deleteDoc(doc(db, 'competencies', id));
+        await loadCoreCompetencies();
+      }
+    };
+    
+    // ========== EXPERIENCE (Professional History) ==========
+    async function loadExperience() {
+      const expCol = collection(db, 'experience');
+      const snapshot = await getDocs(expCol);
+      const container = document.getElementById('experience-list');
+      container.innerHTML = '';
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        container.innerHTML += `
+          <div class="glass-card rounded-xl p-4">
+            <div class="flex justify-between items-start">
+              <div><h3 class="font-bold text-primary">${data.company}</h3><p class="text-sm text-outline">${data.role}</p><p class="text-xs text-outline/60">${data.period}</p></div>
+              <div class="flex gap-2"><button onclick="editExperience('${doc.id}')" class="text-primary text-sm">✏️ Edit</button><button onclick="deleteExperience('${doc.id}')" class="text-red-400 text-sm">🗑️ Delete</button></div>
+            </div>
+            <ul class="mt-2 text-xs text-outline list-disc list-inside">${data.responsibilities?.map(r => `<li>${r}</li>`).join('') || ''}</ul>
+            <div class="flex flex-wrap gap-1 mt-2">${data.skills?.map(s => `<span class="text-[9px] bg-primary/20 px-2 py-0.5 rounded">${s}</span>`).join('') || ''}</div>
+          </div>
+        `;
+      });
+    }
+    
+    window.addExperience = function() {
+      currentEditCollection = 'experience';
+      currentEditId = null;
+      document.getElementById('exp-modal').classList.remove('hidden');
+      document.getElementById('exp-company').value = '';
+      document.getElementById('exp-role').value = '';
+      document.getElementById('exp-period').value = '';
+      document.getElementById('exp-responsibilities').value = '';
+      document.getElementById('exp-skills').value = '';
+      document.getElementById('exp-modal-title').textContent = 'Add Experience';
+    };
+    
+    window.editExperience = async function(id) {
+      const docSnap = await getDoc(doc(db, 'experience', id));
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        currentEditId = id;
+        currentEditCollection = 'experience';
+        document.getElementById('exp-company').value = data.company || '';
+        document.getElementById('exp-role').value = data.role || '';
+        document.getElementById('exp-period').value = data.period || '';
+        document.getElementById('exp-responsibilities').value = data.responsibilities?.join('\n') || '';
+        document.getElementById('exp-skills').value = data.skills?.join(', ') || '';
+        document.getElementById('exp-modal-title').textContent = 'Edit Experience';
+        document.getElementById('exp-modal').classList.remove('hidden');
+      }
+    };
+    
+    window.saveExperience = async function() {
+      const data = {
+        company: document.getElementById('exp-company').value,
+        role: document.getElementById('exp-role').value,
+        period: document.getElementById('exp-period').value,
+        responsibilities: document.getElementById('exp-responsibilities').value.split('\n').filter(l => l.trim()),
+        skills: document.getElementById('exp-skills').value.split(',').map(s => s.trim()),
+        updatedAt: new Date().toISOString()
+      };
+      if (currentEditId) {
+        await updateDoc(doc(db, 'experience', currentEditId), data);
+      } else {
+        await addDoc(collection(db, 'experience'), data);
+      }
+      document.getElementById('exp-modal').classList.add('hidden');
+      await loadExperience();
+    };
+    
+    window.deleteExperience = async function(id) {
+      if (confirm('Delete this experience?')) {
+        await deleteDoc(doc(db, 'experience', id));
+        await loadExperience();
+      }
+    };
+    
+    window.closeModal = function() {
+      document.getElementById('exp-modal').classList.add('hidden');
+    };
+    
+    // ========== PROJECTS CRUD ==========
+    async function loadProjects() {
+      const projCol = collection(db, 'projects');
+      const q = query(projCol, orderBy('order', 'asc'));
+      const snapshot = await getDocs(q);
+      const container = document.getElementById('projects-list');
+      container.innerHTML = '';
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        container.innerHTML += `
+          <div class="glass-card rounded-xl p-4">
+            <div class="flex justify-between"><h3 class="font-bold text-primary">${data.title}</h3><div class="flex gap-2"><button onclick="editProject('${doc.id}')" class="text-primary">✏️</button><button onclick="deleteProject('${doc.id}')" class="text-red-400">🗑️</button></div></div>
+            <p class="text-xs text-outline mt-1">${data.category}</p>
+            <p class="text-sm mt-2">${data.description?.substring(0, 100)}...</p>
+            <div class="flex gap-2 mt-2"><span class="text-[10px] bg-primary/20 px-2 py-0.5 rounded">Order: ${data.order}</span></div>
+          </div>
+        `;
+      });
+    }
+    
+    window.addProject = async function() {
+      const title = prompt('Project title:');
+      if (title) {
+        const projCol = collection(db, 'projects');
+        const snapshot = await getDocs(query(projCol, orderBy('order', 'desc')));
+        const lastOrder = snapshot.empty ? 0 : snapshot.docs[0].data().order || 0;
+        await addDoc(projCol, {
+          title,
+          category: 'New Project',
+          description: 'Description here',
+          excerpt: 'Short excerpt',
+          imageUrl: 'https://picsum.photos/id/0/800/600',
+          link: '#',
+          order: lastOrder + 1
+        });
+        await loadProjects();
+      }
+    };
+    
+    window.editProject = async function(id) {
+      const docSnap = await getDoc(doc(db, 'projects', id));
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        const newTitle = prompt('Edit title:', data.title);
+        const newCategory = prompt('Edit category:', data.category);
+        const newDesc = prompt('Edit description:', data.description);
+        if (newTitle) {
+          await updateDoc(doc(db, 'projects', id), { title: newTitle, category: newCategory, description: newDesc });
+          await loadProjects();
+        }
+      }
+    };
+    
+    window.deleteProject = async function(id) {
+      if (confirm('Delete project?')) await deleteDoc(doc(db, 'projects', id));
+      await loadProjects();
+    };
+    
+    // ========== ARTICLES CRUD ==========
+    async function loadArticles() {
+      const artCol = collection(db, 'articles');
+      const q = query(artCol, orderBy('publishedAt', 'desc'));
+      const snapshot = await getDocs(q);
+      const container = document.getElementById('articles-list');
+      container.innerHTML = '';
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        container.innerHTML += `
+          <div class="glass-card rounded-xl p-4">
+            <div class="flex justify-between"><h3 class="font-bold text-secondary">${data.title}</h3><div class="flex gap-2"><button onclick="editArticle('${doc.id}')" class="text-primary">✏️</button><button onclick="deleteArticle('${doc.id}')" class="text-red-400">🗑️</button></div></div>
+            <p class="text-xs text-outline mt-1">${data.tag || 'Article'} | ${data.publishedAt?.substring(0,10) || ''}</p>
+            <p class="text-sm mt-2">${data.excerpt?.substring(0, 80)}...</p>
+          </div>
+        `;
+      });
+    }
+    
+    window.addArticle = async function() {
+      const title = prompt('Article title:');
+      if (title) {
+        await addDoc(collection(db, 'articles'), {
+          title,
+          excerpt: 'Article excerpt',
+          icon: 'article',
+          tag: 'INSIGHT',
+          link: '#',
+          publishedAt: new Date().toISOString()
+        });
+        await loadArticles();
+      }
+    };
+    
+    window.editArticle = async function(id) {
+      const docSnap = await getDoc(doc(db, 'articles', id));
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        const newTitle = prompt('Edit title:', data.title);
+        const newExcerpt = prompt('Edit excerpt:', data.excerpt);
+        const newLink = prompt('Edit link URL:', data.link);
+        if (newTitle) {
+          await updateDoc(doc(db, 'articles', id), { title: newTitle, excerpt: newExcerpt, link: newLink });
+          await loadArticles();
+        }
+      }
+    };
+    
+    window.deleteArticle = async function(id) {
+      if (confirm('Delete article?')) await deleteDoc(doc(db, 'articles', id));
+      await loadArticles();
+    };
+    
+    // ========== BEYOND SECTIONS ==========
+    async function loadBeyondSections() {
+      const beyondCol = collection(db, 'beyond');
+      const snapshot = await getDocs(beyondCol);
+      const container = document.getElementById('beyond-list');
+      container.innerHTML = '';
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        container.innerHTML += `
+          <div class="glass-card rounded-xl p-4 flex justify-between items-center">
+            <div><span class="font-bold text-tertiary">${data.title}</span><p class="text-xs text-outline">${data.subtitle}</p></div>
+            <div class="flex gap-2"><button onclick="editBeyond('${doc.id}')" class="text-primary">✏️</button><button onclick="deleteBeyond('${doc.id}')" class="text-red-400">🗑️</button></div>
+          </div>
+        `;
+      });
+    }
+    
+    window.addBeyond = async function() {
+      const title = prompt('Activity title (e.g., "Badminton"):');
+      if (title) {
+        await addDoc(collection(db, 'beyond'), {
+          title,
+          subtitle: 'New Activity',
+          imageUrl: 'https://images.pexels.com/photos/3755701/badminton-player-racquet-shuttlecock-3755701.jpg',
+          order: Date.now()
+        });
+        await loadBeyondSections();
+      }
+    };
+    
+    window.editBeyond = async function(id) {
+      const docSnap = await getDoc(doc(db, 'beyond', id));
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        const newTitle = prompt('Edit title:', data.title);
+        const newSubtitle = prompt('Edit subtitle:', data.subtitle);
+        if (newTitle) {
+          await updateDoc(doc(db, 'beyond', id), { title: newTitle, subtitle: newSubtitle });
+          await loadBeyondSections();
+        }
+      }
+    };
+    
+    window.deleteBeyond = async function(id) {
+      if (confirm('Delete this activity?')) await deleteDoc(doc(db, 'beyond', id));
+      await loadBeyondSections();
+    };
+  </script>
+  <style>
+    body { background-color: #0a0a0b; font-family: 'Inter', sans-serif; }
+    .glass-card { background: rgba(53, 52, 54, 0.3); backdrop-filter: blur(16px); border: 1px solid rgba(60, 73, 78, 0.2); }
+    .glass-panel { background: rgba(53, 52, 54, 0.4); backdrop-filter: blur(20px); border: 1px solid rgba(165, 231, 255, 0.1); }
+  </style>
+</head>
+<body class="bg-[#0a0a0b] text-white">
+  <!-- Login Screen -->
+  <div id="login-screen" class="min-h-screen flex items-center justify-center px-4">
+    <div class="glass-card rounded-3xl p-10 max-w-md w-full">
+      <h2 class="text-3xl font-headline font-bold text-center mb-2">Admin Access</h2>
+      <p class="text-outline text-center text-sm mb-8">Newton Raj Portfolio CMS</p>
+      <div id="login-error" class="hidden bg-red-500/20 text-red-300 p-3 rounded-xl text-sm mb-4"></div>
+      <input type="email" id="login-email" placeholder="Email" class="w-full bg-black/40 border border-outline-variant/30 rounded-xl px-4 py-3 mb-4 text-white focus:border-primary outline-none">
+      <input type="password" id="login-password" placeholder="Password" class="w-full bg-black/40 border border-outline-variant/30 rounded-xl px-4 py-3 mb-6 text-white focus:border-primary outline-none">
+      <button id="login-btn" class="w-full bg-gradient-to-r from-primary to-primary-container text-on-primary py-3 rounded-xl font-bold">Login</button>
+      <p class="text-center text-xs text-outline/60 mt-6">Demo: admin@newtonraj.com / Newton@2026Admin</p>
+    </div>
+  </div>
+  
+  <!-- Admin Panel -->
+  <div id="admin-panel" class="hidden">
+    <nav class="fixed top-0 left-0 right-0 bg-[#0a0a0b]/90 backdrop-blur-xl border-b border-outline-variant/20 z-50 px-6 py-3 flex justify-between items-center">
+      <div class="text-xl font-bold text-primary font-headline">⚡ Newton CMS</div>
+      <div class="flex items-center gap-4"><span id="admin-user-email" class="text-sm text-outline"></span><button id="logout-btn" class="text-red-400 text-sm hover:text-red-300">Logout</button></div>
+    </nav>
+    
+    <div class="flex pt-16">
+      <!-- Sidebar -->
+      <aside class="w-64 fixed left-0 top-16 bottom-0 border-r border-outline-variant/20 p-4 space-y-2">
+        <div class="nav-item cursor-pointer p-3 rounded-xl transition-all" data-target="section-profile">👤 My Details</div>
+        <div class="nav-item cursor-pointer p-3 rounded-xl transition-all" data-target="section-site">⚙️ Site Settings</div>
+        <div class="nav-item cursor-pointer p-3 rounded-xl transition-all" data-target="section-meta">🔍 Meta Settings</div>
+        <div class="nav-item cursor-pointer p-3 rounded-xl transition-all" data-target="section-competencies">📊 Core Competencies</div>
+        <div class="nav-item cursor-pointer p-3 rounded-xl transition-all" data-target="section-experience">🏢 Professional History</div>
+        <div class="nav-item cursor-pointer p-3 rounded-xl transition-all" data-target="section-projects">🚀 Featured Projects</div>
+        <div class="nav-item cursor-pointer p-3 rounded-xl transition-all" data-target="section-articles">📝 Latest Writings</div>
+        <div class="nav-item cursor-pointer p-3 rounded-xl transition-all" data-target="section-beyond">🎯 Beyond the Console</div>
+      </aside>
+      
+      <!-- Main Content -->
+      <main class="ml-64 flex-1 p-8">
+        <!-- Profile Section -->
+        <div id="section-profile" class="admin-section space-y-6">
+          <h2 class="text-2xl font-headline font-bold">Profile Details</h2>
+          <div class="glass-card rounded-2xl p-6 space-y-4"><input type="text" id="profile-name" placeholder="Name" class="w-full bg-black/40 rounded-lg p-3"><textarea id="profile-bio" rows="4" placeholder="Bio" class="w-full bg-black/40 rounded-lg p-3"></textarea><input type="text" id="profile-title" placeholder="Title" class="w-full bg-black/40 rounded-lg p-3"><input type="text" id="profile-avatar" placeholder="Avatar URL" class="w-full bg-black/40 rounded-lg p-3"><button onclick="saveProfileDetails()" class="bg-primary/20 hover:bg-primary/30 text-primary px-6 py-2 rounded-full">Save Profile</button></div>
+        </div>
+        
+        <!-- Site Settings -->
+        <div id="section-site" class="admin-section hidden space-y-6"><h2 class="text-2xl font-headline font-bold">Site Settings</h2><div class="glass-card rounded-2xl p-6 space-y-4"><input type="text" id="site-title" class="w-full bg-black/40 rounded-lg p-3"><input type="text" id="site-tagline" class="w-full bg-black/40 rounded-lg p-3"><input type="text" id="footer-text" class="w-full bg-black/40 rounded-lg p-3"><button onclick="saveSiteSettings()" class="bg-primary/20 px-6 py-2 rounded-full">Save</button></div></div>
+        
+        <!-- Meta Settings -->
+        <div id="section-meta" class="admin-section hidden space-y-6"><h2 class="text-2xl font-headline font-bold">SEO Meta</h2><div class="glass-card rounded-2xl p-6 space-y-4"><textarea id="meta-description" rows="3" class="w-full bg-black/40 rounded-lg p-3"></textarea><textarea id="meta-keywords" rows="2" class="w-full bg-black/40 rounded-lg p-3"></textarea><button onclick="saveMetaSettings()" class="bg-primary/20 px-6 py-2 rounded-full">Save</button></div></div>
+        
+        <!-- Core Competencies -->
+        <div id="section-competencies" class="admin-section hidden space-y-6"><h2 class="text-2xl font-headline font-bold">Core Competencies</h2><button onclick="addCompetency()" class="bg-green-600/30 text-green-300 px-4 py-2 rounded-full text-sm">+ Add Competency</button><div id="competencies-list" class="space-y-3"></div></div>
+        
+        <!-- Professional History -->
+        <div id="section-experience" class="admin-section hidden space-y-6"><h2 class="text-2xl font-headline font-bold">Professional History</h2><button onclick="addExperience()" class="bg-green-600/30 text-green-300 px-4 py-2 rounded-full text-sm">+ Add Experience</button><div id="experience-list" class="space-y-3"></div></div>
+        
+        <!-- Projects -->
+        <div id="section-projects" class="admin-section hidden space-y-6"><h2 class="text-2xl font-headline font-bold">Featured Projects</h2><button onclick="addProject()" class="bg-green-600/30 text-green-300 px-4 py-2 rounded-full text-sm">+ Add Project</button><div id="projects-list" class="space-y-3"></div></div>
+        
+        <!-- Articles -->
+        <div id="section-articles" class="admin-section hidden space-y-6"><h2 class="text-2xl font-headline font-bold">Latest Writings</h2><button onclick="addArticle()" class="bg-green-600/30 text-green-300 px-4 py-2 rounded-full text-sm">+ Add Article</button><div id="articles-list" class="space-y-3"></div></div>
+        
+        <!-- Beyond -->
+        <div id="section-beyond" class="admin-section hidden space-y-6"><h2 class="text-2xl font-headline font-bold">Beyond the Console</h2><button onclick="addBeyond()" class="bg-green-600/30 text-green-300 px-4 py-2 rounded-full text-sm">+ Add Activity</button><div id="beyond-list" class="space-y-3"></div></div>
+      </main>
+    </div>
+    
+    <!-- Modal for Experience -->
+    <div id="exp-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="glass-card rounded-2xl p-6 max-w-lg w-full"><h3 id="exp-modal-title" class="text-xl font-bold mb-4">Add Experience</h3><input id="exp-company" placeholder="Company" class="w-full bg-black/40 rounded-lg p-2 mb-3"><input id="exp-role" placeholder="Role" class="w-full bg-black/40 rounded-lg p-2 mb-3"><input id="exp-period" placeholder="Period (e.g., May 2025 - Present)" class="w-full bg-black/40 rounded-lg p-2 mb-3"><textarea id="exp-responsibilities" rows="4" placeholder="Responsibilities (one per line)" class="w-full bg-black/40 rounded-lg p-2 mb-3"></textarea><input id="exp-skills" placeholder="Skills (comma separated)" class="w-full bg-black/40 rounded-lg p-2 mb-4"><div class="flex gap-3"><button onclick="saveExperience()" class="bg-primary/30 px-6 py-2 rounded-full">Save</button><button onclick="closeModal()" class="bg-red-500/30 px-6 py-2 rounded-full">Cancel</button></div></div>
+    </div>
+  </div>
+</body>
+</html>
